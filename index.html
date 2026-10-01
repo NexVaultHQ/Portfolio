@@ -216,61 +216,65 @@ async function syncTargets() {
 }
 
 const simulationStart = new Date("2026-10-01T17:47:00+04:00").getTime();
-    function liveTick() {
-  if (!Object.keys(livePrices).length) return;
+  function liveTick() {
+  if (!Object.keys(targetPrices).length) return;
 
-  // 24-hour cycle:
-  // 0h   = around 25K
-  // 6h   = around 24.5K
-  // 14h  = around 25K
-  // 24h  = around 26K
-  const cycleMs = 24 * 60 * 60 * 1000;
- 
-  const progress =
-    ((Date.now() - simulationStart) % cycleMs) / cycleMs;
+  const now = Math.floor(Date.now() / 500) * 500;
+
+  // Fast 2-hour market cycle
+  const cycleMs = 2 * 60 * 60 * 1000;
+  const elapsed =
+    ((now - simulationStart) % cycleMs + cycleMs) % cycleMs;
+  const progress = elapsed / cycleMs;
 
   let portfolioFactor;
 
-  if (progress < 0.25) {
-    // First 6 hours: gradual decline
-    const x = progress / 0.25;
+  if (progress < 0.333333) {
+    // 0-40 min: 25K -> around 24.5K
+    const x = progress / 0.333333;
     portfolioFactor = 1 - (0.020 * x);
+
   } else if (progress < 0.583333) {
-    // Next 8 hours: recovery
-    const x = (progress - 0.25) / 0.333333;
-    portfolioFactor = 0.980 + (0.020 * x);
+    // 40-70 min: rebound -> around 25.2K
+    const x = (progress - 0.333333) / 0.25;
+    portfolioFactor = 0.980 + (0.028 * x);
+
+  } else if (progress < 0.75) {
+    // 70-90 min: pullback -> around 24.8K
+    const x = (progress - 0.583333) / 0.166667;
+    portfolioFactor = 1.008 - (0.016 * x);
+
   } else {
-    // Final 10 hours: gradual rise
-    const x = (progress - 0.583333) / 0.416667;
-    portfolioFactor = 1 + (0.040 * x);
+    // 90-120 min: rally -> around 25.5K
+    const x = (progress - 0.75) / 0.25;
+    portfolioFactor = 0.992 + (0.028 * x);
   }
 
-  for (const s of Object.keys(livePrices)) {
+  for (const s of Object.keys(targetPrices)) {
     const baseTarget = Number(targetPrices[s]);
     if (!Number.isFinite(baseTarget)) continue;
 
-    const current = livePrices[s];
-
-    // XRP moves more calmly than the other assets
-    const strength = s === "XRP" ? 0.30 : 1.00;
+    // Keep XRP calmer
+    const strength = s === "XRP" ? 0.35 : 1.00;
 
     const desired =
       baseTarget *
       (1 + ((portfolioFactor - 1) * strength));
 
-    const distance = desired - current;
+    // Same movement for everyone at the same moment
+    const seed =
+      s.split("").reduce((a,c) => a + c.charCodeAt(0), 0);
 
-    // Slow movement toward the current point in the 24h path
-    const drift = distance * 0.00015;
+    const wave1 = Math.sin((now / 7000) + seed);
+    const wave2 = Math.sin((now / 17000) + seed * 0.37);
 
-    // Small continuous market-like fluctuation
-    const volatility =
-      current *
-      (((Math.sin((Date.now() / 5000) + s.split("").reduce((a,c) => a + c.charCodeAt(0), 0)) + 1) / 2) - 0.5) *
-      (s === "XRP" ? 0.00012 : 0.00030);
+    const amplitude =
+      s === "XRP" ? 0.00020 : 0.00065;
 
-    livePrices[s] =
-      Math.max(0, current + drift + volatility);
+    livePrices[s] = Math.max(
+      0,
+      desired * (1 + (wave1 * 0.65 + wave2 * 0.35) * amplitude)
+    );
   }
 
   render(livePrices);
