@@ -215,7 +215,8 @@ async function syncTargets() {
   } catch (err) {}
 }
 
-function liveTick() {
+const simulationStart = Date.now();
+    function liveTick() {
   if (!Object.keys(livePrices).length) return;
 
   // 24-hour cycle:
@@ -224,11 +225,9 @@ function liveTick() {
   // 14h  = around 25K
   // 24h  = around 26K
   const cycleMs = 24 * 60 * 60 * 1000;
-  const cycleStart = new Date();
-  cycleStart.setHours(0, 0, 0, 0);
-
+ 
   const progress =
-    ((Date.now() - cycleStart.getTime()) % cycleMs) / cycleMs;
+    ((Date.now() - simulationStart) % cycleMs) / cycleMs;
 
   let portfolioFactor;
 
