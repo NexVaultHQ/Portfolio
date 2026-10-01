@@ -218,17 +218,57 @@ async function syncTargets() {
 function liveTick() {
   if (!Object.keys(livePrices).length) return;
 
+  // 24-hour cycle:
+  // 0h   = around 25K
+  // 6h   = around 24.5K
+  // 14h  = around 25K
+  // 24h  = around 26K
+  const cycleMs = 24 * 60 * 60 * 1000;
+  const cycleStart = new Date();
+  cycleStart.setHours(0, 0, 0, 0);
+
+  const progress =
+    ((Date.now() - cycleStart.getTime()) % cycleMs) / cycleMs;
+
+  let portfolioFactor;
+
+  if (progress < 0.25) {
+    // First 6 hours: gradual decline
+    const x = progress / 0.25;
+    portfolioFactor = 1 - (0.020 * x);
+  } else if (progress < 0.583333) {
+    // Next 8 hours: recovery
+    const x = (progress - 0.25) / 0.333333;
+    portfolioFactor = 0.980 + (0.020 * x);
+  } else {
+    // Final 10 hours: gradual rise
+    const x = (progress - 0.583333) / 0.416667;
+    portfolioFactor = 1 + (0.040 * x);
+  }
+
   for (const s of Object.keys(livePrices)) {
-    const target = Number(targetPrices[s]);
-    if (!Number.isFinite(target)) continue;
+    const baseTarget = Number(targetPrices[s]);
+    if (!Number.isFinite(baseTarget)) continue;
 
     const current = livePrices[s];
 
-    const distance = target - current;
+    // XRP moves more calmly than the other assets
+    const strength = s === "XRP" ? 0.30 : 1.00;
+
+    const desired =
+      baseTarget *
+      (1 + ((portfolioFactor - 1) * strength));
+
+    const distance = desired - current;
+
+    // Slow movement toward the current point in the 24h path
     const drift = distance * 0.00015;
 
+    // Small continuous market-like fluctuation
     const volatility =
-      current * (Math.random() - 0.5) * 0.00035;
+      current *
+      (Math.random() - 0.5) *
+      (s === "XRP" ? 0.00012 : 0.00030);
 
     livePrices[s] =
       Math.max(0, current + drift + volatility);
