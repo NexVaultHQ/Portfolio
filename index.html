@@ -193,12 +193,54 @@
     }
   }
 
-  loadPrices();
+ let livePrices = {};
+let targetPrices = {};
 
-  setInterval(
-    loadPrices,
-    5000
-  );
+async function syncTargets() {
+  try {
+    const response = await fetch(
+      "./prices.json?t=" + Date.now(),
+      { cache: "no-store" }
+    );
+
+    const data = await response.json();
+
+    if (data && data.prices) {
+      targetPrices = data.prices;
+
+      if (!Object.keys(livePrices).length) {
+        livePrices = { ...targetPrices };
+      }
+    }
+  } catch (err) {}
+}
+
+function liveTick() {
+  if (!Object.keys(livePrices).length) return;
+
+  for (const s of Object.keys(livePrices)) {
+    const target = Number(targetPrices[s]);
+    if (!Number.isFinite(target)) continue;
+
+    const current = livePrices[s];
+
+    const distance = target - current;
+    const drift = distance * 0.035;
+
+    const volatility =
+      current * (Math.random() - 0.5) * 0.00035;
+
+    livePrices[s] =
+      Math.max(0, current + drift + volatility);
+  }
+
+  render(livePrices);
+}
+
+syncTargets();
+
+setInterval(syncTargets, 3000);
+setInterval(liveTick, 500);
 })();
  </script>
 </body></html>
