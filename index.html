@@ -56,7 +56,7 @@
     let total = 0;
 
     for (const [s, c] of Object.entries(coins)) {
-      const p = Number(prices[s]);
+      const p = Number(Number(prices[s]).toFixed(dp[s]));
 
       if (!Number.isFinite(p)) continue;
 
