@@ -5,70 +5,200 @@
 
 
 <script>
-(() => {
+  (() => {
   const INVESTED = 20913.00;
+
   const coins = {
-    XRP:{h:3703.1, base:1.6723, avg:1.350220}, WOTF:{h:3494.21, base:0.3017, avg:0.343425},
-    XST:{h:63887.63, base:0.04617, avg:0.034435}, NTDA:{h:13271.79, base:0.15083, avg:0.120556},
-    AROS:{h:7980.63, base:0.20547, avg:0.175425}, GOAF:{h:367376.67, base:0.0032167, avg:0.00353860},
-    USWS:{h:38476337.91, base:0.00003871, avg:0.000041584}, BDOR:{h:16138068.5, base:0.00008937, avg:0.000111538},
-    GDOR:{h:1805451, base:0.0008017, avg:0.000609266}, USER:{h:1060201, base:0.0021037, avg:0.00132050},
-    GDNR:{h:2020040, base:0.001356151, avg:0.00114503}
+    XRP:  {h:3703.1,      avg:1.350220,    cost:5000.00},
+    WOTF: {h:3494.21,     avg:0.343425,    cost:1200.00},
+    XST:  {h:63887.63,    avg:0.034435,    cost:2200.00},
+    NTDA: {h:13271.79,    avg:0.120556,    cost:1600.00},
+    AROS: {h:7980.63,     avg:0.175425,    cost:1400.00},
+    GOAF: {h:367376.67,   avg:0.00353860,  cost:1300.00},
+    USWS: {h:38476337.91, avg:0.000041584, cost:1600.00},
+    BDOR: {h:16138068.5,  avg:0.000111538, cost:1800.00},
+    GDOR: {h:1805451,     avg:0.000609266, cost:1100.00},
+    USER: {h:1060201,     avg:0.00132050,  cost:1400.00},
+    GDNR: {h:2020040,     avg:0.00114503,  cost:2313.00}
   };
-  const dp={XRP:4,WOTF:4,XST:5,NTDA:5,AROS:5,GOAF:7,USWS:8,BDOR:8,GDOR:7,USER:7,GDNR:9};
-  const key="portfolio_sim_auto_v1";
-  let state;
-  try { state=JSON.parse(localStorage.getItem(key)||"null"); } catch(e){}
-  if(!state) state={prices:Object.fromEntries(Object.entries(coins).map(([s,c])=>[s,c.base]))};
 
-  const money=n=>"$"+n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
-  const sm=n=>(n>=0?"+":"-")+"$"+Math.abs(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
-  const sp=n=>(n>=0?"+":"")+n.toFixed(2)+"%";
+  const dp = {
+    XRP:4,
+    WOTF:4,
+    XST:5,
+    NTDA:5,
+    AROS:5,
+    GOAF:7,
+    USWS:8,
+    BDOR:8,
+    GDOR:7,
+    USER:7,
+    GDNR:9
+  };
 
-  function render(move=true){
-    let total=0;
-    for(const [s,c] of Object.entries(coins)){
-      let p=Number(state.prices[s]||c.base);
-      if(move){
-        // Small tick movement, intentionally subtle like a live market screen.
-        const tick=(Math.random()-0.5)*0.0018; // about ±0.09% per tick
-        p*=1+tick;
-        // Soft bounds prevent unrealistic runaway values over long sessions.
-        if(p<c.base*0.82) p=c.base*0.82;
-        if(p>c.base*1.22) p=c.base*1.22;
-        state.prices[s]=p;
+  const money = n =>
+    "$" + n.toLocaleString("en-US", {
+      minimumFractionDigits:2,
+      maximumFractionDigits:2
+    });
+
+  const sm = n =>
+    (n >= 0 ? "+$" : "-$") +
+    Math.abs(n).toLocaleString("en-US", {
+      minimumFractionDigits:2,
+      maximumFractionDigits:2
+    });
+
+  const sp = n =>
+    (n >= 0 ? "+" : "") + n.toFixed(2) + "%";
+
+  function render(prices) {
+    let total = 0;
+
+    for (const [s, c] of Object.entries(coins)) {
+      const p = Number(prices[s]);
+
+      if (!Number.isFinite(p)) continue;
+
+      const value = c.h * p;
+      const cost = c.cost;
+      const pl = value - cost;
+      const pct = (pl / cost) * 100;
+
+      total += value;
+
+      const card =
+        document.querySelector(`[data-coin="${s}"]`);
+
+      if (!card) continue;
+
+      const valueEl =
+        card.querySelector(".value");
+
+      const priceEl =
+        card.querySelector(".price");
+
+      const pctEl =
+        card.querySelector(".coin-head .big");
+
+      const mini =
+        card.querySelectorAll(".mini > div");
+
+      if (valueEl) {
+        valueEl.textContent = money(value);
       }
-      const value=c.h*p, cost=c.h*c.avg, pl=value-cost, pct=pl/cost*100;
-      total+=value;
-      const card=document.querySelector(`[data-coin="${s}"]`);
-      if(!card) continue;
-      const valueEl=card.querySelector(".value"), priceEl=card.querySelector(".price"), pctEl=card.querySelector(".coin-head .big");
-      const mini=card.querySelectorAll(".mini > div");
-      if(valueEl) valueEl.textContent=money(value);
-      if(priceEl){
-        const spark=priceEl.querySelector("span");
-        priceEl.firstChild.textContent="$"+p.toFixed(dp[s])+" ";
-        if(spark) spark.className=pl>=0?"pos":"neg";
+
+      if (priceEl) {
+        const spark =
+          priceEl.querySelector("span");
+
+        priceEl.firstChild.textContent =
+          "$" + p.toFixed(dp[s]) + " ";
+
+        if (spark) {
+          spark.className =
+            pl >= 0 ? "pos" : "neg";
+        }
       }
-      if(pctEl){ pctEl.textContent=sp(pct); pctEl.className=(pl>=0?"pos":"neg")+" big"; }
-      if(mini.length>=3){
-        const b=mini[2].querySelector("b");
-        if(b){ b.textContent=sm(pl); b.className=pl>=0?"pos":"neg"; }
+
+      if (pctEl) {
+        pctEl.textContent = sp(pct);
+
+        pctEl.className =
+          (pl >= 0 ? "pos" : "neg") + " big";
+      }
+
+      if (mini.length >= 3) {
+        const b =
+          mini[2].querySelector("b");
+
+        if (b) {
+          b.textContent = sm(pl);
+
+          b.className =
+            pl >= 0 ? "pos" : "neg";
+        }
       }
     }
-    localStorage.setItem(key,JSON.stringify(state));
-    const pl=total-INVESTED,pct=pl/INVESTED*100;
-    const pv=document.getElementById("portfolioValue"), pe=document.getElementById("portfolioPL");
-    if(pv) pv.textContent=money(total);
-    if(pe){ pe.className=pl>=0?"pos":"neg"; pe.innerHTML=`<b>${sm(pl)}</b> &nbsp; (${sp(pct)})`; }
-    const now=new Date();
-    const stamp=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Muscat",day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false}).format(now);
-    const f=document.getElementById("lastUpdated");
-    if(f) f.textContent=`Last Updated: ${stamp} · UTC+4 · Live Data (Simulated) · Auto`;
+
+    const pl = total - INVESTED;
+    const pct = (pl / INVESTED) * 100;
+
+    const pv =
+      document.getElementById("portfolioValue");
+
+    const pe =
+      document.getElementById("portfolioPL");
+
+    if (pv) {
+      pv.textContent = money(total);
+    }
+
+    if (pe) {
+      pe.className =
+        pl >= 0 ? "pos" : "neg";
+
+      pe.innerHTML =
+        `<b>${sm(pl)}</b> &nbsp; (${sp(pct)})`;
+    }
+
+    const now = new Date();
+
+    const stamp =
+      new Intl.DateTimeFormat("en-GB", {
+        timeZone:"Asia/Muscat",
+        day:"2-digit",
+        month:"short",
+        year:"numeric",
+        hour:"2-digit",
+        minute:"2-digit",
+        second:"2-digit",
+        hour12:false
+      }).format(now);
+
+    const f =
+      document.getElementById("lastUpdated");
+
+    if (f) {
+      f.textContent =
+        `Last Updated: ${stamp} · UTC+4`;
+    }
   }
 
-  render(false);
-  setInterval(() => render(true), 2000);
-})();
-</script>
+  async function loadPrices() {
+    try {
+      const response =
+        await fetch(
+          "./prices.json?t=" + Date.now(),
+          {cache:"no-store"}
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          "Price file unavailable"
+        );
+      }
+
+      const data =
+        await response.json();
+
+      if (data && data.prices) {
+        render(data.prices);
+      }
+
+    } catch (err) {
+      console.log(
+        "Waiting for price update..."
+      );
+    }
+  }
+
+  loadPrices();
+
+  setInterval(
+    loadPrices,
+    5000
+  );
+})
+ </script>
 </body></html>
