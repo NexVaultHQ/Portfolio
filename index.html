@@ -225,7 +225,7 @@ function liveTick() {
     const current = livePrices[s];
 
     const distance = target - current;
-    const drift = distance * 0.035;
+    const drift = distance * 0.00015;
 
     const volatility =
       current * (Math.random() - 0.5) * 0.00035;
