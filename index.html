@@ -215,7 +215,7 @@ async function syncTargets() {
   } catch (err) {}
 }
 
-const simulationStart = Date.now();
+const simulationStart = new Date("2026-10-01T17:47:00+04:00").getTime();
     function liveTick() {
   if (!Object.keys(livePrices).length) return;
 
