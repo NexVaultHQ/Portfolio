@@ -9,7 +9,7 @@
   const INVESTED = 20913.00;
 
   const coins = {
-    XRP:  {h:3703.1,      avg:1.350220,    cost:5000.00},
+    XRP:  {h:4373.481,      avg:1.350220,    cost:5000.00},
     WOTF: {h:3494.21,     avg:0.343425,    cost:1200.00},
     XST:  {h:63887.63,    avg:0.034435,    cost:2200.00},
     NTDA: {h:13271.79,    avg:0.120556,    cost:1600.00},
@@ -215,105 +215,154 @@ async function syncTargets() {
   } catch (err) {}
 }
 
-const simulationStart = new Date("2026-10-01T17:47:00+04:00").getTime();
- function liveTick() {
+const simulationStart = new Date("2026-10-02T13:30:00+04:00").getTime();;
+function liveTick() {
   if (!Object.keys(targetPrices).length) return;
 
   const now = Math.floor(Date.now() / 500) * 500;
 
-  // Shared 7-day simulation
+  // Shared 7-day scenario
   const weekMs = 7 * 24 * 60 * 60 * 1000;
   const elapsed =
     ((now - simulationStart) % weekMs + weekMs) % weekMs;
-
   const progress = elapsed / weekMs;
 
-  // Overall weekly story:
-  // Start ~25K
-  // Early push higher
-  // Pullbacks + recoveries
-  // Stronger rally later in the week
-  const points = [
-    [0.00, 1.000],
-    [0.05, 1.025],
-    [0.10, 1.012],
-    [0.16, 1.060],
-    [0.23, 1.035],
-    [0.31, 1.095],
-    [0.39, 1.065],
-    [0.48, 1.130],
-    [0.57, 1.090],
-    [0.67, 1.165],
-    [0.76, 1.125],
-    [0.86, 1.220],
-    [0.93, 1.175],
-    [1.00, 1.260]
+  // Portfolio targets in thousands.
+  // Day 1: ~24K-31K
+  // Day 2: ~27K-34K
+  // Day 3: ~29K-36K
+  // Day 4: peak near 38K
+  // Day 5: dump toward 32K
+  // Day 6-7: strong 30K-37K volatility
+  const path = [
+    [0.000, 25.0],
+    [0.025, 24.0],
+    [0.050, 27.0],
+    [0.075, 25.5],
+    [0.105, 29.0],
+    [0.125, 27.0],
+    [0.143, 31.0],
+
+    [0.165, 28.0],
+    [0.190, 33.0],
+    [0.215, 29.0],
+    [0.245, 34.0],
+    [0.286, 31.0],
+
+    [0.315, 35.0],
+    [0.345, 30.0],
+    [0.380, 33.0],
+    [0.410, 36.0],
+    [0.429, 32.0],
+
+    [0.460, 35.0],
+    [0.500, 33.0],
+    [0.535, 37.0],
+    [0.565, 34.0],
+    [0.571, 38.0],
+
+    [0.610, 35.0],
+    [0.650, 37.0],
+    [0.690, 33.0],
+    [0.714, 32.0],
+
+    [0.750, 35.0],
+    [0.790, 31.0],
+    [0.825, 34.0],
+    [0.857, 36.0],
+
+    [0.890, 32.0],
+    [0.925, 35.0],
+    [0.955, 31.0],
+    [0.980, 37.0],
+    [1.000, 33.0]
   ];
 
-  let portfolioFactor = 1;
+  let targetK = 25;
 
-  for (let i = 0; i < points.length - 1; i++) {
-    const a = points[i];
-    const b = points[i + 1];
+  for (let i = 0; i < path.length - 1; i++) {
+    const a = path[i];
+    const b = path[i + 1];
 
     if (progress >= a[0] && progress <= b[0]) {
       const x = (progress - a[0]) / (b[0] - a[0]);
-
-      // Smooth transition between major targets
       const smooth = x * x * (3 - 2 * x);
 
-      portfolioFactor =
-        a[1] + (b[1] - a[1]) * smooth;
-
+      targetK = a[1] + (b[1] - a[1]) * smooth;
       break;
     }
   }
 
-  // Short-term market movement
-  // Creates visible action throughout the day
-  const marketWave =
-      Math.sin(now / 180000) * 0.0040 +
-      Math.sin(now / 470000) * 0.0030 +
-      Math.sin(now / 910000) * 0.0020 +
-      Math.sin(now / 55000)  * 0.0012;
+  // Small fast waves inside every major pump/dump
+  const intradayWave =
+      Math.sin(now / 85000) * 0.010 +
+      Math.sin(now / 210000) * 0.007 +
+      Math.sin(now / 430000) * 0.004;
 
-  portfolioFactor *= (1 + marketWave);
+  targetK *= (1 + intradayWave);
+
+  // Calculate baseline portfolio value from prices.json
+  let baselineValue = 0;
+
+  for (const s of Object.keys(targetPrices)) {
+    const c = coins[s];
+    const p = Number(targetPrices[s]);
+
+    if (c && Number.isFinite(p)) {
+      baselineValue += c.h * p;
+    }
+  }
+
+  if (baselineValue <= 0) return;
+
+  const portfolioFactor =
+    (targetK * 1000) / baselineValue;
 
   for (const s of Object.keys(targetPrices)) {
     const baseTarget = Number(targetPrices[s]);
     if (!Number.isFinite(baseTarget)) continue;
-
-    // XRP stays calmer than smaller assets
-    const strength = s === "XRP" ? 0.40 : 1.00;
-
-    const trend =
-      1 + ((portfolioFactor - 1) * strength);
 
     const seed =
       s.split("").reduce(
         (a, c) => a + c.charCodeAt(0), 0
       );
 
-    // Each coin gets its own synchronized movement
-    const coinWave =
-        Math.sin((now / 37000) + seed) * 0.0025 +
-        Math.sin((now / 83000) + seed * 0.31) * 0.0018 +
-        Math.sin((now / 19000) + seed * 0.73) * 0.0008;
+    // Different personalities for each asset
+    let trendStrength = 1.0;
+    let volatility = 1.0;
 
-    const coinStrength =
-      s === "XRP" ? 0.30 : 1.00;
+    if (s === "XRP") {
+      trendStrength = 0.42;
+      volatility = 0.25;
+    } else if (["USER", "GDOR", "XST"].includes(s)) {
+      trendStrength = 1.35;
+      volatility = 1.65;
+    } else if (["BDOR", "USWS"].includes(s)) {
+      trendStrength = 0.55;
+      volatility = 0.70;
+    } else if (["WOTF", "NTDA", "AROS", "GOAF"].includes(s)) {
+      trendStrength = 0.90;
+      volatility = 1.00;
+    }
+
+    const trend =
+      1 + ((portfolioFactor - 1) * trendStrength);
+
+    const coinWave =
+        Math.sin((now / 31000) + seed) * 0.010 +
+        Math.sin((now / 73000) + seed * 0.41) * 0.006 +
+        Math.sin((now / 17000) + seed * 0.77) * 0.003;
 
     livePrices[s] = Math.max(
       0,
       baseTarget *
-      trend *
-      (1 + coinWave * coinStrength)
+      Math.max(0.10, trend) *
+      (1 + coinWave * volatility)
     );
   }
 
   render(livePrices);
 }
-
 syncTargets();
 
 setInterval(syncTargets, 3000);
