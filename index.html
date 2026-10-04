@@ -1007,4 +1007,78 @@ window.__portfolioMarket = {
     <div class="settings-version">Portfolio · Version 1.0.0</div>
   </div>
 </section>
+<script id="settings-script">
+(() => {
+  const screen = document.getElementById("settingsScreen");
+  const back = document.getElementById("settingsBack");
+  const privacy = document.getElementById("privacyToggle");
+  const countdown = document.getElementById("settingsCountdownToggle");
+  const headerGear = document.querySelector("header .icon-btn");
+  const navSettings = [...document.querySelectorAll("nav a")].find(a => a.textContent.trim().includes("Settings"));
+
+  function setSwitch(el,on){
+    if(!el) return;
+    el.classList.toggle("on",on);
+    el.setAttribute("aria-pressed",on ? "true" : "false");
+  }
+
+  function openSettings(e){
+    if(e) e.preventDefault();
+    screen.classList.add("open");
+    screen.setAttribute("aria-hidden","false");
+    document.body.classList.add("settings-open");
+  }
+
+  function closeSettings(){
+    screen.classList.remove("open");
+    screen.setAttribute("aria-hidden","true");
+    document.body.classList.remove("settings-open");
+  }
+
+  let privacyOn = localStorage.getItem("portfolioPrivacyMode") === "on";
+  document.body.classList.toggle("privacy-mode",privacyOn);
+  setSwitch(privacy,privacyOn);
+
+  privacy.addEventListener("click",() => {
+    privacyOn = !privacyOn;
+    localStorage.setItem("portfolioPrivacyMode", privacyOn ? "on" : "off");
+    document.body.classList.toggle("privacy-mode",privacyOn);
+    setSwitch(privacy,privacyOn);
+  });
+
+  function countdownState(){
+    return localStorage.getItem("portfolioCandleCountdown") !== "off";
+  }
+
+  function syncCountdown(){
+    setSwitch(countdown,countdownState());
+  }
+  syncCountdown();
+
+  countdown.addEventListener("click",() => {
+    const desired = !countdownState();
+    const chartToggle = document.getElementById("candleTimerToggle");
+    if(chartToggle && (chartToggle.getAttribute("aria-pressed") === "true") !== desired){
+      chartToggle.click();
+    } else {
+      localStorage.setItem("portfolioCandleCountdown", desired ? "on" : "off");
+    }
+    syncCountdown();
+  });
+
+  document.querySelectorAll(".cosmetic-setting").forEach(btn => {
+    const isOn = btn.classList.contains("on");
+    setSwitch(btn,isOn);
+    btn.addEventListener("click",() => {
+      setSwitch(btn,btn.getAttribute("aria-pressed") !== "true");
+    });
+  });
+
+  if(headerGear) headerGear.addEventListener("click",openSettings);
+  if(navSettings) navSettings.addEventListener("click",openSettings);
+  back.addEventListener("click",closeSettings);
+
+  window.addEventListener("storage",syncCountdown);
+})();
+</script>
 </body></html>
