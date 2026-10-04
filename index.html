@@ -971,4 +971,40 @@ window.__portfolioMarket = {
   }, 500);
 })();
 </script>
+<section class="settings-screen" id="settingsScreen" aria-hidden="true">
+  <div class="settings-wrap">
+    <div class="settings-head">
+      <button class="settings-back" id="settingsBack" type="button">‹</button>
+      <h2>Settings</h2><span></span>
+    </div>
+
+    <div class="settings-title">General</div>
+    <div class="settings-card">
+      <div class="settings-row"><div class="settings-ico">◐</div><div class="settings-copy"><b>Appearance</b><small>App theme</small></div><span class="settings-value">Dark</span></div>
+      <div class="settings-row"><div class="settings-ico">$</div><div class="settings-copy"><b>Currency</b><small>Display currency</small></div><span class="settings-value">USD ($)</span></div>
+      <div class="settings-row"><div class="settings-ico">A</div><div class="settings-copy"><b>Language</b><small>Interface language</small></div><span class="settings-value">English</span></div>
+      <div class="settings-row"><div class="settings-ico">↻</div><div class="settings-copy"><b>Price Updates</b><small>Market data refresh</small></div><span class="settings-value">Live</span></div>
+    </div>
+
+    <div class="settings-title">Privacy & Trading</div>
+    <div class="settings-card">
+      <div class="settings-row"><div class="settings-ico">◉</div><div class="settings-copy"><b>Privacy Mode</b><small>Hide portfolio values</small></div><button class="settings-switch" id="privacyToggle" type="button"><i></i></button></div>
+      <div class="settings-row"><div class="settings-ico">◷</div><div class="settings-copy"><b>Candle Countdown</b><small>Show candle close timer</small></div><button class="settings-switch on" id="settingsCountdownToggle" type="button"><i></i></button></div>
+    </div>
+
+    <div class="settings-title">Notifications</div>
+    <div class="settings-card">
+      <div class="settings-row"><div class="settings-ico">♢</div><div class="settings-copy"><b>Price Alerts</b><small>Price movement notifications</small></div><button class="settings-switch on cosmetic-setting" type="button"><i></i></button></div>
+      <div class="settings-row"><div class="settings-ico">↗</div><div class="settings-copy"><b>Portfolio Alerts</b><small>Portfolio activity notifications</small></div><button class="settings-switch cosmetic-setting" type="button"><i></i></button></div>
+    </div>
+
+    <div class="settings-title">Security</div>
+    <div class="settings-card">
+      <div class="settings-row"><div class="settings-ico">◎</div><div class="settings-copy"><b>Face ID</b><small>Quick access protection</small></div><button class="settings-switch cosmetic-setting" type="button"><i></i></button></div>
+      <div class="settings-row"><div class="settings-ico">⌛</div><div class="settings-copy"><b>Auto-Lock</b><small>Lock after inactivity</small></div><span class="settings-value">5 min</span></div>
+    </div>
+
+    <div class="settings-version">Portfolio · Version 1.0.0</div>
+  </div>
+</section>
 </body></html>
