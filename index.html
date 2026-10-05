@@ -309,36 +309,35 @@ async function syncTargets() {
   } catch (err) {}
 }
 
-const simulationStart = new Date("2026-10-05T12:49:00+04:00").getTime();
-const scenarioMs = 3 * 24 * 60 * 60 * 1000;
+const simulationStart = new Date("2026-10-05T12:52:00+04:00").getTime();
+const scenarioMs = 11 * 60 * 60 * 1000;
 
 const scenarioPath = [
   [0.000, 24.90],
-  [0.030, 25.60],
-  [0.060, 25.10],
-  [0.100, 26.30],
-  [0.140, 25.70],
-  [0.180, 27.00],
-  [0.220, 26.50],
-  [0.270, 27.80],
-  [0.310, 27.10],
-  [0.333, 28.00],
-
-  [0.380, 27.40],
-  [0.430, 28.60],
-  [0.480, 28.00],
-  [0.540, 29.30],
-  [0.600, 28.70],
-  [0.667, 30.00],
-
-  [0.720, 29.30],
-  [0.770, 30.50],
-  [0.820, 29.90],
-  [0.870, 31.30],
-  [0.910, 30.60],
-  [0.950, 32.20],
-  [0.980, 31.70],
-  [1.000, 32.50]
+  [0.010, 25.30],
+  [0.025, 25.82],
+  [0.045, 25.35],
+  [0.070, 26.05],
+  [0.100, 25.55],
+  [0.135, 26.55],
+  [0.170, 25.95],
+  [0.210, 27.25],
+  [0.250, 26.55],
+  [0.295, 27.85],
+  [0.340, 27.20],
+  [0.390, 28.65],
+  [0.440, 27.75],
+  [0.495, 29.35],
+  [0.550, 28.45],
+  [0.610, 30.10],
+  [0.665, 29.05],
+  [0.725, 30.85],
+  [0.780, 29.75],
+  [0.835, 31.35],
+  [0.885, 30.35],
+  [0.930, 31.70],
+  [0.965, 31.15],
+  [1.000, 32.00]
 ];
 
 function targetKAt(ts) {
@@ -359,24 +358,27 @@ function targetKAt(ts) {
   }
 
   const intradayWave =
-      Math.sin(ts / 70000) * 0.006 +
-      Math.sin(ts / 165000) * 0.004 +
-      Math.sin(ts / 370000) * 0.0025;
+      Math.sin(ts / 23000) * 0.0038 +
+      Math.sin(ts / 61000) * 0.0048 +
+      Math.sin(ts / 145000) * 0.0032;
 
   return targetK * (1 + intradayWave);
 }
 
 function assetProfile(s) {
   if (s === "XRP") {
-    return { trendStrength:0.42, volatility:0.25 };
+    return { trendStrength:0.52, volatility:0.34, bias:1.02 };
   }
   if (["USER", "GDOR", "XST"].includes(s)) {
-    return { trendStrength:1.35, volatility:1.65 };
+    return { trendStrength:1.28, volatility:1.55, bias:1.03 };
   }
-  if (["BDOR", "USWS"].includes(s)) {
-    return { trendStrength:0.55, volatility:0.70 };
+  if (["BDOR", "USWS", "GOAF"].includes(s)) {
+    return { trendStrength:0.28, volatility:0.95, bias:0.82 };
   }
-  return { trendStrength:0.90, volatility:1.00 };
+  if (s === "GDNR") {
+    return { trendStrength:0.48, volatility:1.12, bias:0.90 };
+  }
+  return { trendStrength:0.88, volatility:1.00, bias:1.00 };
 }
 
 function computePricesAt(ts) {
@@ -399,8 +401,8 @@ function computePricesAt(ts) {
     if (!Number.isFinite(baseTarget)) continue;
 
     const seed = s.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-    const {trendStrength, volatility} = assetProfile(s);
-    const trend = 1 + ((portfolioFactor - 1) * trendStrength);
+    const {trendStrength, volatility, bias} = assetProfile(s);
+    const trend = (1 + ((portfolioFactor - 1) * trendStrength)) * bias;
 
     const coinWave =
         Math.sin((ts / 29000) + seed) * 0.012 +
