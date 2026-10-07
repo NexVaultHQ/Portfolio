@@ -309,25 +309,68 @@ async function syncTargets() {
   } catch (err) {}
 }
 
-const simulationStart = new Date("2026-10-07T08:48:00+04:00").getTime();
-const scenarioMs = 45 * 60 * 1000;
+const simulationStart = new Date("2026-10-07T08:53:16+04:00").getTime();
+const scenarioMs = 15 * 60 * 60 * 1000;
 
 const scenarioPath = [
-  [0.000, 31.00],
-  [0.120, 29.80],
-  [0.190, 30.20],
-  [0.320, 28.40],
-  [0.430, 27.10],
-  [0.500, 27.80],
-  [0.640, 25.90],
-  [0.760, 24.60],
-  [0.820, 24.15],
-  [0.865, 23.35],
-  [0.905, 24.45],
-  [0.940, 23.20],
-  [0.970, 24.70],
-  [1.000, 23.90]
+  [0.000, 29.85],
+  [0.010, 29.20],
+  [0.020, 28.60],
+  [0.030, 27.90],
+  [0.040, 26.90],
+  [0.050, 25.00],
+  [0.058, 25.60],
+  [0.070, 24.40],
+  [0.080, 23.70],
+  [0.090, 22.90],
+  [0.100, 22.45],
+
+  [0.140, 23.05],
+  [0.180, 22.20],
+  [0.220, 22.85],
+  [0.270, 22.10],
+  [0.320, 22.75],
+  [0.380, 22.25],
+  [0.440, 22.95],
+  [0.500, 22.30],
+  [0.560, 22.80],
+  [0.620, 22.15],
+  [0.680, 22.70],
+  [0.740, 22.05],
+  [0.800, 22.88],
+  [0.860, 22.30],
+  [0.920, 22.75],
+  [0.970, 22.20],
+  [1.000, 22.55]
 ];
+
+const scenarioStartPrices = {
+  XRP:1.75982,
+  WOTF:0.35941,
+  XST:0.06743,
+  NTDA:0.19998,
+  AROS:0.27394,
+  GOAF:0.0029377,
+  USWS:0.00003482,
+  BDOR:0.00008171,
+  GDOR:0.00112998,
+  USER:0.00278569,
+  GDNR:0.00150139
+};
+
+const scenarioRangePrices = {
+  XRP:1.36000,
+  WOTF:0.29000,
+  XST:0.04700,
+  NTDA:0.10500,
+  AROS:0.15800,
+  GOAF:0.0030000,
+  USWS:0.00003600,
+  BDOR:0.00009300,
+  GDOR:0.0007800,
+  USER:0.0017500,
+  GDNR:0.00105000
+};
 
 function targetKAt(ts) {
   const elapsed = Math.max(0, Math.min(ts - simulationStart, scenarioMs));
@@ -347,76 +390,69 @@ function targetKAt(ts) {
   }
 
   const intradayWave =
-      Math.sin(ts / 19000) * 0.0048 +
-      Math.sin(ts / 57000) * 0.0065 +
-      Math.sin(ts / 171000) * 0.0038;
+      Math.sin(ts / 27000) * 0.0018 +
+      Math.sin(ts / 83000) * 0.0024 +
+      Math.sin(ts / 241000) * 0.0014;
 
   return targetK * (1 + intradayWave);
 }
 
-function assetProfile(s) {
-  if (s === "XRP") {
-    return { trendStrength:0.52, volatility:0.34, bias:1.02 };
-  }
-  if (["USER", "GDOR", "XST"].includes(s)) {
-    return { trendStrength:1.28, volatility:1.55, bias:1.03 };
-  }
-  if (["BDOR", "USWS", "GOAF"].includes(s)) {
-    return { trendStrength:0.28, volatility:0.95, bias:0.82 };
-  }
-  if (s === "GDNR") {
-    return { trendStrength:0.48, volatility:1.12, bias:0.90 };
-  }
-  return { trendStrength:0.88, volatility:1.00, bias:1.00 };
-}
-
 function computePricesAt(ts) {
-  let baselineValue = 0;
-
-  for (const s of Object.keys(targetPrices)) {
-    const c = coins[s];
-    const p = Number(targetPrices[s]);
-    if (c && Number.isFinite(p)) baselineValue += c.h * p;
-  }
-
-  if (baselineValue <= 0) return {};
-
   const targetK = targetKAt(ts);
-  const portfolioFactor = (targetK * 1000) / baselineValue;
+  const rawProgress = Math.max(0, Math.min((ts - simulationStart) / (scenarioMs * 0.10), 1));
+  const blend = rawProgress * rawProgress * (3 - 2 * rawProgress);
   const provisional = {};
 
-  for (const s of Object.keys(targetPrices)) {
-    const baseTarget = Number(targetPrices[s]);
-    if (!Number.isFinite(baseTarget)) continue;
+  for (const s of Object.keys(coins)) {
+    const startPrice = scenarioStartPrices[s];
+    const endPrice = scenarioRangePrices[s];
+    if (!Number.isFinite(startPrice) || !Number.isFinite(endPrice)) continue;
 
-    const seed = s.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-    const {trendStrength, volatility, bias} = assetProfile(s);
-    const trend = (1 + ((portfolioFactor - 1) * trendStrength)) * bias;
+    const seed = s.split("").reduce((a, ch) => a + ch.charCodeAt(0), 0);
+    const base = startPrice + (endPrice - startPrice) * blend;
+
+    if (s === "XRP") {
+      if (rawProgress >= 1) {
+        const xrpWave =
+          Math.sin(ts / 77000) * 0.025 +
+          Math.sin(ts / 231000) * 0.012;
+        provisional[s] = Math.max(1.30, Math.min(1.40, 1.355 + xrpWave));
+      } else {
+        const transitionWave = Math.sin(ts / 49000 + seed) * 0.007;
+        provisional[s] = Math.max(0.01, base * (1 + transitionWave));
+      }
+      continue;
+    }
+
+    const vol = ["XST","USER","GDOR"].includes(s) ? 0.026 :
+                ["WOTF","NTDA","AROS"].includes(s) ? 0.018 : 0.022;
 
     const coinWave =
-        Math.sin((ts / 29000) + seed) * 0.012 +
-        Math.sin((ts / 67000) + seed * 0.41) * 0.008 +
-        Math.sin((ts / 15000) + seed * 0.77) * 0.004;
+      Math.sin(ts / 34000 + seed) * vol +
+      Math.sin(ts / 97000 + seed * 0.37) * (vol * 0.55);
 
-    provisional[s] = Math.max(
-      0,
-      baseTarget * Math.max(0.10, trend) * (1 + coinWave * volatility)
-    );
+    provisional[s] = Math.max(0.000000001, base * (1 + coinWave));
   }
 
-  let provisionalTotal = 0;
+  const targetValue = targetK * 1000;
+  const xrpPrice = provisional.XRP || scenarioRangePrices.XRP;
+  const xrpValue = coins.XRP.h * xrpPrice;
+
+  let nonXrpValue = 0;
   for (const [s, p] of Object.entries(provisional)) {
-    provisionalTotal += coins[s].h * p;
+    if (s === "XRP") continue;
+    nonXrpValue += coins[s].h * p;
   }
 
-  const finalScale = provisionalTotal > 0
-    ? (targetK * 1000) / provisionalTotal
+  const nonXrpScale = nonXrpValue > 0
+    ? Math.max(0.10, (targetValue - xrpValue) / nonXrpValue)
     : 1;
 
   const result = {};
   for (const [s, p] of Object.entries(provisional)) {
-    result[s] = p * finalScale;
+    result[s] = s === "XRP" ? p : p * nonXrpScale;
   }
+
   return result;
 }
 
