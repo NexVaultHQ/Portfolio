@@ -360,69 +360,61 @@ async function syncTargets() {
   } catch (err) {}
 }
 
-const simulationStart = new Date("2026-10-07T08:53:16+04:00").getTime();
-const scenarioMs = 15 * 60 * 60 * 1000;
+const simulationStart = new Date("2026-10-10T13:08:54+04:00").getTime();
+const scenarioMs = 11 * 60 * 60 * 1000;
 
 const scenarioPath = [
-  [0.000, 29.85],
-  [0.010, 29.20],
-  [0.020, 28.60],
-  [0.030, 27.90],
-  [0.040, 26.90],
-  [0.050, 25.00],
-  [0.058, 25.60],
-  [0.070, 24.40],
-  [0.080, 23.70],
-  [0.090, 22.90],
-  [0.100, 22.45],
-
-  [0.140, 23.05],
-  [0.180, 22.20],
-  [0.220, 22.85],
-  [0.270, 22.10],
-  [0.320, 22.75],
-  [0.380, 22.25],
-  [0.440, 22.95],
-  [0.500, 22.30],
-  [0.560, 22.80],
-  [0.620, 22.15],
-  [0.680, 22.70],
-  [0.740, 22.05],
-  [0.800, 22.88],
-  [0.860, 22.30],
-  [0.920, 22.75],
-  [0.970, 22.20],
-  [1.000, 22.55]
+  [0.000, 23.77],
+  [0.040, 23.15],
+  [0.075, 23.45],
+  [0.115, 22.55],
+  [0.155, 22.95],
+  [0.205, 21.85],
+  [0.245, 22.15],
+  [0.295, 20.95],
+  [0.335, 21.25],
+  [0.370, 19.85],
+  [0.405, 19.40],
+  [0.445, 19.75],
+  [0.490, 18.95],
+  [0.540, 19.55],
+  [0.600, 18.70],
+  [0.670, 19.30],
+  [0.740, 18.55],
+  [0.810, 19.20],
+  [0.880, 18.75],
+  [0.940, 19.45],
+  [1.000, 18.90]
 ];
 
 const scenarioStartPrices = {
-  XRP:1.75982,
-  WOTF:0.35941,
-  XST:0.06743,
-  NTDA:0.19998,
-  AROS:0.27394,
-  GOAF:0.0029377,
-  USWS:0.00003482,
-  BDOR:0.00008171,
-  GDOR:0.00112998,
-  USER:0.00278569,
-  GDNR:0.00150139,
-  IOF:0.0092425
+  XRP:1.3614942,
+  WOTF:0.3014506,
+  XST:0.0489327,
+  NTDA:0.1071801,
+  AROS:0.1577335,
+  GOAF:0.0030669,
+  USWS:0.0000379237,
+  BDOR:0.0000948368,
+  GDOR:0.0008300,
+  USER:0.0018646,
+  GDNR:0.0010993,
+  IOF:0.0092652
 };
 
 const scenarioRangePrices = {
-  XRP:1.36000,
-  WOTF:0.29000,
-  XST:0.04700,
-  NTDA:0.10500,
-  AROS:0.15800,
-  GOAF:0.0030000,
-  USWS:0.00003600,
-  BDOR:0.00009300,
-  GDOR:0.0007800,
-  USER:0.0017500,
-  GDNR:0.00105000,
-  IOF:0.0092425
+  XRP:1.24000,
+  WOTF:0.26500,
+  XST:0.03000,
+  NTDA:0.09100,
+  AROS:0.14600,
+  GOAF:0.0046500,
+  USWS:0.00003150,
+  BDOR:0.00016200,
+  GDOR:0.0005100,
+  USER:0.0010800,
+  GDNR:0.00156000,
+  IOF:0.0091800
 };
 
 function targetKAt(ts) {
@@ -452,7 +444,7 @@ function targetKAt(ts) {
 
 function computePricesAt(ts) {
   const targetK = targetKAt(ts);
-  const rawProgress = Math.max(0, Math.min((ts - simulationStart) / (scenarioMs * 0.10), 1));
+  const rawProgress = Math.max(0, Math.min((ts - simulationStart) / (scenarioMs * 0.38), 1));
   const blend = rawProgress * rawProgress * (3 - 2 * rawProgress);
   const provisional = {};
 
@@ -469,7 +461,7 @@ function computePricesAt(ts) {
         const xrpWave =
           Math.sin(ts / 77000) * 0.025 +
           Math.sin(ts / 231000) * 0.012;
-        provisional[s] = Math.max(1.30, Math.min(1.40, 1.355 + xrpWave));
+        provisional[s] = Math.max(1.18, Math.min(1.30, 1.240 + xrpWave));
       } else {
         const transitionWave = Math.sin(ts / 49000 + seed) * 0.007;
         provisional[s] = Math.max(0.01, base * (1 + transitionWave));
@@ -481,7 +473,8 @@ function computePricesAt(ts) {
       const iofWave =
         Math.sin(ts / 82000 + seed) * 0.008 +
         Math.sin(ts / 247000 + seed * 0.31) * 0.004;
-      provisional[s] = Math.max(0.000001, 0.0092425 * (1 + iofWave));
+      const iofBase = startPrice + (endPrice - startPrice) * blend;
+      provisional[s] = Math.max(0.000001, iofBase * (1 + iofWave));
       continue;
     }
 
@@ -498,6 +491,8 @@ function computePricesAt(ts) {
   const targetValue = targetK * 1000;
   const xrpPrice = provisional.XRP || scenarioRangePrices.XRP;
   const xrpValue = coins.XRP.h * xrpPrice;
+  const iofPrice = provisional.IOF || scenarioRangePrices.IOF;
+  const iofValue = coins.IOF.h * iofPrice;
 
   let nonXrpValue = 0;
   for (const [s, p] of Object.entries(provisional)) {
@@ -506,7 +501,7 @@ function computePricesAt(ts) {
   }
 
   const nonXrpScale = nonXrpValue > 0
-    ? Math.max(0.10, (targetValue - xrpValue) / nonXrpValue)
+    ? Math.max(0.10, (targetValue - xrpValue - iofValue) / nonXrpValue)
     : 1;
 
   const result = {};
