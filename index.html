@@ -363,39 +363,74 @@ async function syncTargets() {
   } catch (err) {}
 }
 
-// 48-hour simulated market scenario: 13 Oct 2026 23:05 through 15 Oct 2026 23:05 (Oman time).
-// Portfolio TOTAL ranges from roughly $20k to $22k; holdings and purchase costs stay unchanged.
-const simulationStart = new Date("2026-10-13T23:05:00+04:00").getTime();
+// New synchronized 48-hour simulated bearish scenario (Oman time).
+// Starting near the previous ~$21,980 total. Fall below $20,000 within two hours,
+// then fluctuate around $18,000-$19,000 for the rest of the 48-hour window.
+const simulationStart = new Date("2026-10-15T09:12:00+04:00").getTime();
 const scenarioMs = 48 * 60 * 60 * 1000;
 
-// Time fraction => target portfolio value in USD thousands.
-// Two-hour alternating rallies and pullbacks, with uneven intensity.
+// Normalized time (0..1) -> total portfolio value in USD thousands.
 const scenarioPath = [
-  [0.0000, 21.30],
-  [0.0417, 21.78],
-  [0.0833, 20.55],
-  [0.1250, 21.37],
-  [0.1667, 20.12],
-  [0.2083, 21.68],
-  [0.2500, 20.92],
-  [0.2917, 21.86],
-  [0.3333, 20.28],
-  [0.3750, 21.59],
-  [0.4167, 20.67],
-  [0.4583, 21.90],
-  [0.5000, 20.48],
-  [0.5417, 21.22],
-  [0.5833, 20.10],
-  [0.6250, 21.67],
-  [0.6667, 20.82],
-  [0.7083, 21.94],
-  [0.7500, 20.41],
-  [0.7917, 21.35],
-  [0.8333, 20.18],
-  [0.8750, 21.88],
-  [0.9167, 20.74],
-  [0.9583, 21.48],
-  [1.0000, 21.05]
+  [0.00000000, 21.97],
+  [0.00520833, 21.79],
+  [0.01041667, 21.55],
+  [0.01562500, 21.61],
+  [0.02083333, 20.95],
+  [0.02604167, 20.58],
+  [0.03020833, 20.72],
+  [0.03437500, 19.91],
+  [0.03812500, 19.56],
+  [0.04166667, 19.38],
+  [0.04687500, 19.52],
+  [0.05208333, 19.06],
+  [0.05729167, 18.88],
+  [0.06250000, 18.54],
+  [0.07291667, 18.23],
+  [0.08333333, 18.65],
+  [0.10416667, 18.16],
+  [0.12500000, 18.85],
+  [0.14583333, 18.40],
+  [0.16666667, 18.75],
+  [0.18750000, 18.22],
+  [0.20833333, 18.91],
+  [0.22916667, 18.35],
+  [0.25000000, 18.68],
+  [0.27083333, 18.15],
+  [0.29166667, 18.88],
+  [0.31250000, 18.36],
+  [0.33333333, 18.65],
+  [0.35416667, 18.09],
+  [0.37500000, 18.85],
+  [0.39583333, 18.43],
+  [0.41666667, 18.74],
+  [0.43750000, 18.18],
+  [0.45833333, 18.94],
+  [0.47916667, 18.37],
+  [0.50000000, 18.63],
+  [0.52083333, 18.22],
+  [0.54166667, 18.85],
+  [0.56250000, 18.13],
+  [0.58333333, 18.74],
+  [0.60416667, 18.31],
+  [0.62500000, 18.88],
+  [0.64583333, 18.25],
+  [0.66666667, 18.57],
+  [0.68750000, 18.11],
+  [0.70833333, 18.81],
+  [0.72916667, 18.41],
+  [0.75000000, 18.92],
+  [0.77083333, 18.19],
+  [0.79166667, 18.58],
+  [0.81250000, 18.28],
+  [0.83333333, 18.87],
+  [0.85416667, 18.34],
+  [0.87500000, 18.64],
+  [0.89583333, 18.12],
+  [0.91666667, 18.90],
+  [0.93750000, 18.27],
+  [0.95833333, 18.59],
+  [0.97916667, 18.16],
+  [1.00000000, 18.50]
 ];
 
 const scenarioStartPrices = {
@@ -447,14 +482,16 @@ function targetKAt(ts) {
     }
   }
 
-  // Smaller, continuously moving swings layered over the 2-hour trend.
-  // Clamping keeps the combined portfolio inside the requested band.
+  // Continuous short bearish-market rallies and sell-offs between larger swings.
+  // All viewers use the same timestamp, so refresh does not restart the path.
   const intradayWave =
-      Math.sin(ts / (8 * 60 * 1000)) * 0.0042 +
-      Math.sin(ts / (3 * 60 * 1000)) * 0.0020 +
-      Math.sin(ts / 34000) * 0.0008;
+      Math.sin(ts / (11 * 60 * 1000)) * 0.0036 +
+      Math.sin(ts / (4 * 60 * 1000)) * 0.0019 +
+      Math.sin(ts / 39000) * 0.0007;
 
-  return Math.max(20.02, Math.min(21.98, targetK * (1 + intradayWave)));
+  // Once the $18k-$19k zone is reached, keep oscillations inside it.
+  const upperBound = elapsed >= 3 * 60 * 60 * 1000 ? 18.96 : 21.985;
+  return Math.max(18.04, Math.min(upperBound, targetK * (1 + intradayWave)));
 }
 
 function computePricesAt(ts) {
