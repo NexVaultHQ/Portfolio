@@ -363,90 +363,68 @@ async function syncTargets() {
   } catch (err) {}
 }
 
-// New synchronized 48-hour simulated bearish scenario (Oman time).
-// Starting near the previous ~$21,980 total. Fall below $20,000 within two hours,
-// then fluctuate around $18,000-$19,000 for the rest of the 48-hour window.
-const simulationStart = new Date("2026-10-15T09:12:00+04:00").getTime();
+// Synchronized 48-hour simulated bullish recovery (Oman time).
+// Gradual launch near previous portfolio value; cross $20,000 during the first hour.
+// Then climb into the $22k-$23k area with strong rises and intermediate pullbacks.
+const simulationStart = new Date("2026-10-16T09:08:00+04:00").getTime();
 const scenarioMs = 48 * 60 * 60 * 1000;
 
-// Normalized time (0..1) -> total portfolio value in USD thousands.
+// Progress over 48h -> TARGET TOTAL PORTFOLIO value in USD thousands (not per-asset).
 const scenarioPath = [
-  [0.00000000, 21.97],
-  [0.00520833, 21.79],
-  [0.01041667, 21.55],
-  [0.01562500, 21.61],
-  [0.02083333, 20.95],
-  [0.02604167, 20.58],
-  [0.03020833, 20.72],
-  [0.03437500, 19.91],
-  [0.03812500, 19.56],
-  [0.04166667, 19.38],
-  [0.04687500, 19.52],
-  [0.05208333, 19.06],
-  [0.05729167, 18.88],
-  [0.06250000, 18.54],
-  [0.07291667, 18.23],
-  [0.08333333, 18.65],
-  [0.10416667, 18.16],
-  [0.12500000, 18.85],
-  [0.14583333, 18.40],
-  [0.16666667, 18.75],
-  [0.18750000, 18.22],
-  [0.20833333, 18.91],
-  [0.22916667, 18.35],
-  [0.25000000, 18.68],
-  [0.27083333, 18.15],
-  [0.29166667, 18.88],
-  [0.31250000, 18.36],
-  [0.33333333, 18.65],
-  [0.35416667, 18.09],
-  [0.37500000, 18.85],
-  [0.39583333, 18.43],
-  [0.41666667, 18.74],
-  [0.43750000, 18.18],
-  [0.45833333, 18.94],
-  [0.47916667, 18.37],
-  [0.50000000, 18.63],
-  [0.52083333, 18.22],
-  [0.54166667, 18.85],
-  [0.56250000, 18.13],
-  [0.58333333, 18.74],
-  [0.60416667, 18.31],
-  [0.62500000, 18.88],
-  [0.64583333, 18.25],
-  [0.66666667, 18.57],
-  [0.68750000, 18.11],
-  [0.70833333, 18.81],
-  [0.72916667, 18.41],
-  [0.75000000, 18.92],
-  [0.77083333, 18.19],
-  [0.79166667, 18.58],
-  [0.81250000, 18.28],
-  [0.83333333, 18.87],
-  [0.85416667, 18.34],
-  [0.87500000, 18.64],
-  [0.89583333, 18.12],
-  [0.91666667, 18.90],
-  [0.93750000, 18.27],
-  [0.95833333, 18.59],
-  [0.97916667, 18.16],
-  [1.00000000, 18.50]
+  [0.000000000, 18.669262],
+  [0.004166667, 18.880000],
+  [0.008333333, 19.260000],
+  [0.012500000, 19.770000],
+  [0.015625000, 20.250000],
+  [0.020833333, 20.640000],
+  [0.029166667, 20.360000],
+  [0.041666667, 21.150000],
+  [0.054166667, 20.880000],
+  [0.066666667, 21.660000],
+  [0.083333333, 22.160000],
+  [0.104166667, 21.520000],
+  [0.125000000, 22.550000],
+  [0.145833333, 21.840000],
+  [0.166666667, 23.050000],
+  [0.187500000, 22.420000],
+  [0.208333333, 23.190000],
+  [0.250000000, 22.140000],
+  [0.291666667, 22.990000],
+  [0.333333333, 21.930000],
+  [0.375000000, 23.180000],
+  [0.416666667, 22.010000],
+  [0.458333333, 22.900000],
+  [0.500000000, 22.270000],
+  [0.541666667, 23.290000],
+  [0.583333333, 21.910000],
+  [0.625000000, 22.850000],
+  [0.666666667, 22.120000],
+  [0.708333333, 23.250000],
+  [0.750000000, 22.250000],
+  [0.791666667, 21.770000],
+  [0.833333333, 22.940000],
+  [0.875000000, 21.880000],
+  [0.916666667, 23.140000],
+  [0.958333333, 22.260000],
+  [1.000000000, 23.010000]
 ];
 
+// Keep the prices each viewer was already seeing at launch, to avoid
+// discontinuities in individual coin charts when switching the scenario.
 const scenarioStartPrices = {
-  XRP:1.3856079,
-  WOTF:0.1966994,
-  XST:0.0213672,
-  NTDA:0.0677207,
-  AROS:0.1088928,
-  GOAF:0.0034720,
-  USWS:0.0000228872,
-  BDOR:0.0001207453,
-  GDOR:0.0003739571,
-  USER:0.0007882211,
-  GDNR:0.0011431093,
-  IOF:0.0092447,
-  ATFS:0.036676
+  XRP:1.355236281137,
+  WOTF:0.1652959495165,
+  XST:0.01886780181072,
+  NTDA:0.05556686853359,
+  AROS:0.08785314342901,
+  GOAF:0.002833491567639,
+  USWS:0.00001997030348378,
+  BDOR:0.00009880794379055,
+  GDOR:0.0003217041780529,
+  USER:0.0006870777884850,
+  GDNR:0.0009664834884525,
+  IOF:0.009203438196997,
+  ATFS:0.03655199309105
 };
 
 const scenarioRangePrices = {
@@ -482,16 +460,16 @@ function targetKAt(ts) {
     }
   }
 
-  // Continuous short bearish-market rallies and sell-offs between larger swings.
-  // All viewers use the same timestamp, so refresh does not restart the path.
-  const intradayWave =
-      Math.sin(ts / (11 * 60 * 1000)) * 0.0036 +
-      Math.sin(ts / (4 * 60 * 1000)) * 0.0019 +
-      Math.sin(ts / 39000) * 0.0007;
+  // Continuous modest fluctuations layered over major gains and pullbacks.
+  // The waveform is anchored to the shared start timestamp (not page load time).
+  const waveRamp = Math.min(1, elapsed / (5 * 60 * 1000));
+  const intradayWave = waveRamp * (
+      Math.sin(elapsed / (11 * 60 * 1000)) * 0.0033 +
+      Math.sin(elapsed / (4 * 60 * 1000)) * 0.0015 +
+      Math.sin(elapsed / 39000) * 0.0006
+  );
 
-  // Once the $18k-$19k zone is reached, keep oscillations inside it.
-  const upperBound = elapsed >= 3 * 60 * 60 * 1000 ? 18.96 : 21.985;
-  return Math.max(18.04, Math.min(upperBound, targetK * (1 + intradayWave)));
+  return Math.max(18.40, Math.min(23.46, targetK * (1 + intradayWave)));
 }
 
 function computePricesAt(ts) {
