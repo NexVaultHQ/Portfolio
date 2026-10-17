@@ -363,84 +363,102 @@ async function syncTargets() {
   } catch (err) {}
 }
 
-// Synchronized 48-hour simulated bullish recovery (Oman time).
-// Gradual launch near previous portfolio value; cross $20,000 during the first hour.
-// Then climb into the $22k-$23k area with strong rises and intermediate pullbacks.
-const simulationStart = new Date("2026-10-16T09:08:00+04:00").getTime();
+// Bearish 48-hour DEMO scenario: starts at 21:00 Oman time on 17 October 2026.
+// Crosses $20k before 22:00, then holds $18k-$19k with substantial reversals.
+// XRP slides to $1.285 and oscillates in the $1.28-$1.29 range.
+const simulationStart = new Date("2026-10-17T21:00:00+04:00").getTime();
 const scenarioMs = 48 * 60 * 60 * 1000;
-
-// Progress over 48h -> TARGET TOTAL PORTFOLIO value in USD thousands (not per-asset).
 const scenarioPath = [
-  [0.000000000, 18.669262],
-  [0.004166667, 18.880000],
-  [0.008333333, 19.260000],
-  [0.012500000, 19.770000],
-  [0.015625000, 20.250000],
-  [0.020833333, 20.640000],
-  [0.029166667, 20.360000],
-  [0.041666667, 21.150000],
-  [0.054166667, 20.880000],
-  [0.066666667, 21.660000],
-  [0.083333333, 22.160000],
-  [0.104166667, 21.520000],
-  [0.125000000, 22.550000],
-  [0.145833333, 21.840000],
-  [0.166666667, 23.050000],
-  [0.187500000, 22.420000],
-  [0.208333333, 23.190000],
-  [0.250000000, 22.140000],
-  [0.291666667, 22.990000],
-  [0.333333333, 21.930000],
-  [0.375000000, 23.180000],
-  [0.416666667, 22.010000],
-  [0.458333333, 22.900000],
-  [0.500000000, 22.270000],
-  [0.541666667, 23.290000],
-  [0.583333333, 21.910000],
-  [0.625000000, 22.850000],
-  [0.666666667, 22.120000],
-  [0.708333333, 23.250000],
-  [0.750000000, 22.250000],
-  [0.791666667, 21.770000],
-  [0.833333333, 22.940000],
-  [0.875000000, 21.880000],
-  [0.916666667, 23.140000],
-  [0.958333333, 22.260000],
-  [1.000000000, 23.010000]
+  [0.0000000000, 22.287983],
+  [0.0013888889, 22.200000],
+  [0.0027777778, 22.250000],
+  [0.0041666667, 21.720000],
+  [0.0062500000, 21.190000],
+  [0.0076388889, 21.310000],
+  [0.0090277778, 20.780000],
+  [0.0104166667, 20.540000],
+  [0.0118055556, 20.160000],
+  [0.0125000000, 19.930000],
+  [0.0138888889, 19.640000],
+  [0.0152777778, 19.320000],
+  [0.0166666667, 19.430000],
+  [0.0184027778, 19.050000],
+  [0.0201388889, 18.820000],
+  [0.0225694444, 18.660000],
+  [0.0250000000, 18.430000],
+  [0.0277777778, 18.700000],
+  [0.0312500000, 18.190000],
+  [0.0364583333, 18.830000],
+  [0.0416666667, 18.360000],
+  [0.0486111111, 18.880000],
+  [0.0555555556, 18.150000],
+  [0.0625000000, 18.670000],
+  [0.0729166667, 18.260000],
+  [0.0833333333, 18.890000],
+  [0.0937500000, 18.350000],
+  [0.1041666667, 18.770000],
+  [0.1145833333, 18.160000],
+  [0.1250000000, 18.920000],
+  [0.1458333333, 18.220000],
+  [0.1666666667, 18.750000],
+  [0.1875000000, 18.120000],
+  [0.2083333333, 18.840000],
+  [0.2291666667, 18.290000],
+  [0.2500000000, 18.760000],
+  [0.2708333333, 18.180000],
+  [0.2916666667, 18.900000],
+  [0.3125000000, 18.320000],
+  [0.3333333333, 18.710000],
+  [0.3541666667, 18.140000],
+  [0.3750000000, 18.830000],
+  [0.3958333333, 18.270000],
+  [0.4166666667, 18.910000],
+  [0.4375000000, 18.400000],
+  [0.4583333333, 18.720000],
+  [0.4791666667, 18.170000],
+  [0.5000000000, 18.800000],
+  [0.5416666667, 18.230000],
+  [0.5833333333, 18.850000],
+  [0.6250000000, 18.140000],
+  [0.6666666667, 18.900000],
+  [0.7083333333, 18.300000],
+  [0.7500000000, 18.710000],
+  [0.7916666667, 18.190000],
+  [0.8333333333, 18.820000],
+  [0.8750000000, 18.310000],
+  [0.9166666667, 18.860000],
+  [0.9583333333, 18.200000],
+  [1.0000000000, 18.520000]
 ];
-
-// Keep the prices each viewer was already seeing at launch, to avoid
-// discontinuities in individual coin charts when switching the scenario.
 const scenarioStartPrices = {
-  XRP:1.355236281137,
-  WOTF:0.1652959495165,
-  XST:0.01886780181072,
-  NTDA:0.05556686853359,
-  AROS:0.08785314342901,
-  GOAF:0.002833491567639,
-  USWS:0.00001997030348378,
-  BDOR:0.00009880794379055,
-  GDOR:0.0003217041780529,
-  USER:0.0006870777884850,
-  GDNR:0.0009664834884525,
-  IOF:0.009203438196997,
-  ATFS:0.03655199309105
+  XRP:1.3682405815264,
+  WOTF:0.22282649759551,
+  XST:0.025844340213299,
+  NTDA:0.076008234215201,
+  AROS:0.12616079468680,
+  GOAF:0.0040372982395854,
+  USWS:0.000026422475683282,
+  BDOR:0.00013476759792302,
+  GDOR:0.00041949628280065,
+  USER:0.00089562941564228,
+  GDNR:0.0013102050042568,
+  IOF:0.0090938016214455,
+  ATFS:0.036485946385856
 };
-
 const scenarioRangePrices = {
-  XRP:1.36500,
-  WOTF:0.26500,
-  XST:0.03000,
-  NTDA:0.09100,
-  AROS:0.14600,
-  GOAF:0.0046500,
-  USWS:0.00003150,
-  BDOR:0.00016200,
-  GDOR:0.0005100,
-  USER:0.0010800,
-  GDNR:0.00156000,
-  IOF:0.0091800,
-  ATFS:0.0365700
+  XRP:1.2850000000000,
+  WOTF:0.18494599300427,
+  XST:0.021450802377038,
+  NTDA:0.063086834398616,
+  AROS:0.10471345959004,
+  GOAF:0.0033509575388559,
+  USWS:0.000021930654817124,
+  BDOR:0.00011185710627611,
+  GDOR:0.00034818191472454,
+  USER:0.00074337241498309,
+  GDNR:0.0010874701535332,
+  IOF:0.0080500000000000,
+  ATFS:0.030500000000000
 };
 
 function targetKAt(ts) {
@@ -460,21 +478,22 @@ function targetKAt(ts) {
     }
   }
 
-  // Continuous modest fluctuations layered over major gains and pullbacks.
-  // The waveform is anchored to the shared start timestamp (not page load time).
+  // Small fluctuations are deterministic from the shared clock, not refresh time.
   const waveRamp = Math.min(1, elapsed / (5 * 60 * 1000));
   const intradayWave = waveRamp * (
-      Math.sin(elapsed / (11 * 60 * 1000)) * 0.0033 +
-      Math.sin(elapsed / (4 * 60 * 1000)) * 0.0015 +
-      Math.sin(elapsed / 39000) * 0.0006
+      Math.sin(elapsed / (10 * 60 * 1000)) * 0.0030 +
+      Math.sin(elapsed / (3 * 60 * 1000)) * 0.0012 +
+      Math.sin(elapsed / 36000) * 0.0006
   );
-
-  return Math.max(18.40, Math.min(23.46, targetK * (1 + intradayWave)));
+  const inRange = elapsed >= 90 * 60 * 1000;
+  return Math.max(inRange ? 18.06 : 18.00,
+     Math.min(inRange ? 18.93 : 23.40, targetK * (1 + intradayWave)));
 }
 
 function computePricesAt(ts) {
   const targetK = targetKAt(ts);
-  const rawProgress = Math.max(0, Math.min((ts - simulationStart) / (scenarioMs * 0.38), 1));
+  const elapsed = Math.max(0, Math.min(ts - simulationStart, scenarioMs));
+  const rawProgress = Math.min(1, elapsed / (4 * 60 * 60 * 1000));
   const blend = rawProgress * rawProgress * (3 - 2 * rawProgress);
   const provisional = {};
 
@@ -487,24 +506,23 @@ function computePricesAt(ts) {
     const base = startPrice + (endPrice - startPrice) * blend;
 
     if (s === "XRP") {
-      if (rawProgress >= 1) {
-        const xrpWave =
-          Math.sin(ts / 77000) * 0.025 +
-          Math.sin(ts / 231000) * 0.012;
-        provisional[s] = Math.max(1.33, Math.min(1.40, 1.365 + xrpWave));
+      const xrpProgress = Math.min(1, elapsed / (45 * 60 * 1000));
+      const xrpEase = xrpProgress * xrpProgress * (3 - 2 * xrpProgress);
+      if (xrpProgress < 1) {
+        provisional[s] = startPrice + (1.285 - startPrice) * xrpEase;
       } else {
-        const transitionWave = Math.sin(ts / 49000 + seed) * 0.007;
-        provisional[s] = Math.max(0.01, base * (1 + transitionWave));
+        const timeInRange = elapsed - 45 * 60 * 1000;
+        const wave = Math.sin(timeInRange / (8 * 60 * 1000)) * 0.0041 +
+                     Math.sin(timeInRange / (2.3 * 60 * 1000)) * 0.0007;
+        provisional[s] = Math.max(1.28, Math.min(1.29, 1.285 + wave));
       }
       continue;
     }
 
     if (s === "IOF") {
-      const iofWave =
-        Math.sin(ts / 82000 + seed) * 0.008 +
-        Math.sin(ts / 247000 + seed * 0.31) * 0.004;
-      const iofBase = startPrice + (endPrice - startPrice) * blend;
-      provisional[s] = Math.max(0.000001, iofBase * (1 + iofWave));
+      const iofWave = Math.sin(elapsed / 82000) * 0.008 +
+                      Math.sin(elapsed / 247000) * 0.004;
+      provisional[s] = Math.max(0.000001, base * (1 + iofWave));
       continue;
     }
 
@@ -512,8 +530,8 @@ function computePricesAt(ts) {
                 ["WOTF","NTDA","AROS"].includes(s) ? 0.018 : 0.022;
 
     const coinWave =
-      Math.sin(ts / 34000 + seed) * vol +
-      Math.sin(ts / 97000 + seed * 0.37) * (vol * 0.55);
+      (Math.sin(elapsed / 34000 + seed) - Math.sin(seed)) * vol +
+      (Math.sin(elapsed / 97000 + seed * 0.37) - Math.sin(seed * 0.37)) * (vol * 0.55);
 
     provisional[s] = Math.max(0.000000001, base * (1 + coinWave));
   }
