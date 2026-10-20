@@ -479,6 +479,26 @@ function targetKAt(ts) {
   return Math.max(18.07, Math.min(19.96, targetK * (1 + intradayWave)));
 }
 
+// XRP-specific simulated update, synchronized for every visitor by absolute time.
+// The previous portfolio scenario and all other coin trajectories stay unchanged.
+const xrpScenarioStart = new Date("2026-10-20T22:41:00+04:00").getTime();
+const xrpTransitionMs = 5 * 60 * 1000;
+function synchronizedXrpPrice(ts) {
+  if (ts < xrpScenarioStart) return null;
+  const elapsed = ts - xrpScenarioStart;
+  if (elapsed < xrpTransitionMs) {
+    const t = elapsed / xrpTransitionMs;
+    const eased = t * t * (3 - 2 * t);
+    return 1.322 + (1.325 - 1.322) * eased;
+  }
+  const rangeTime = elapsed - xrpTransitionMs;
+  const simulatedPrice =
+    1.3275 +
+    Math.sin(rangeTime / (4 * 60 * 1000) - Math.PI / 2) * 0.0025 +
+    Math.sin(rangeTime / (65 * 1000)) * 0.00035;
+  return Math.max(1.325, Math.min(1.330, simulatedPrice));
+}
+
 function computePricesAt(ts) {
   const targetK = targetKAt(ts);
   const elapsed = Math.max(0, Math.min(ts - simulationStart, scenarioMs));
@@ -541,6 +561,11 @@ function computePricesAt(ts) {
   for (const [s, p] of Object.entries(provisional)) {
     result[s] = (s === "XRP" || s === "IOF" || s === "ATFS") ? p : p * nonXrpScale;
   }
+
+  // Override XRP only. All other assets retain their original computed prices,
+  // so the portfolio total naturally includes XRP's separate change.
+  const latestXrp = synchronizedXrpPrice(ts);
+  if (latestXrp !== null) result.XRP = latestXrp;
 
   return result;
 }
