@@ -365,9 +365,8 @@ async function syncTargets() {
   } catch (err) {}
 }
 
-// Synchronized 48-hour DEMO scenario, 20-21 October 2026 (Oman time).
-// Target TOTAL portfolio oscillates between $18k and just under $20k.
-// Deterministic absolute timestamps ensure reloads do not restart the sequence.
+// Historic prices before the new scenario. Keeping these also preserves past chart candles.
+const computePriorPricesAt = (() => {
 const simulationStart = new Date("2026-10-20T11:58:00+04:00").getTime();
 const scenarioMs = 48 * 60 * 60 * 1000;
 const scenarioPath = [
@@ -571,7 +570,181 @@ function computePricesAt(ts) {
 
   return result;
 }
+  return computePricesAt;
+})();
 
+// 48-hour synchronized simulated rally beginning 2026-10-21T23:20:00+04:00 (Oman time).
+// Above $20k within 10 minutes, then strong $22k-$24k fluctuations.
+const simulationStart = new Date("2026-10-21T23:20:00+04:00").getTime();
+const scenarioMs = 48 * 60 * 60 * 1000;
+const scenarioPath = [
+  [0.0000000000, 18.97528324],
+  [0.0006944444, 19.28000000],
+  [0.0013888889, 19.58000000],
+  [0.0020833333, 19.89000000],
+  [0.0026041667, 20.17000000],
+  [0.0034722222, 20.55000000],
+  [0.0052083333, 20.95000000],
+  [0.0069444444, 21.37000000],
+  [0.0086805556, 21.18000000],
+  [0.0121527778, 22.13000000],
+  [0.0156250000, 22.80000000],
+  [0.0190972222, 23.20000000],
+  [0.0260416667, 22.40000000],
+  [0.0347222222, 23.55000000],
+  [0.0416666667, 24.10000000],
+  [0.0520833333, 23.02000000],
+  [0.0625000000, 22.27000000],
+  [0.0729166667, 23.37000000],
+  [0.0833333333, 22.52000000],
+  [0.1041666667, 23.87000000],
+  [0.1250000000, 22.70000000],
+  [0.1458333333, 24.12000000],
+  [0.1666666667, 23.02000000],
+  [0.1875000000, 22.34000000],
+  [0.2083333333, 23.78000000],
+  [0.2291666667, 22.51000000],
+  [0.2500000000, 24.08000000],
+  [0.2916666667, 22.63000000],
+  [0.3333333333, 23.82000000],
+  [0.3750000000, 22.29000000],
+  [0.4166666667, 24.15000000],
+  [0.4583333333, 22.77000000],
+  [0.5000000000, 23.91000000],
+  [0.5416666667, 22.22000000],
+  [0.5833333333, 23.60000000],
+  [0.6250000000, 22.45000000],
+  [0.6666666667, 24.18000000],
+  [0.7083333333, 22.84000000],
+  [0.7500000000, 23.91000000],
+  [0.7916666667, 22.12000000],
+  [0.8333333333, 23.55000000],
+  [0.8750000000, 24.13000000],
+  [0.9166666667, 22.65000000],
+  [0.9583333333, 23.78000000],
+  [1.0000000000, 23.32000000]
+];
+const scenarioStartPrices = {
+  XRP: 1.328881882906697,
+  WOTF: 0.1427279658903673,
+  XST: 0.01660423386994855,
+  NTDA: 0.04744813220338293,
+  AROS: 0.07788632672469693,
+  GOAF: 0.002653430308095527,
+  USWS: 0.00001700889853198723,
+  BDOR: 0.00008370966912615980,
+  GDOR: 0.0002783360475502753,
+  USER: 0.0005900970078223968,
+  GDNR: 0.0008702046698585727,
+  IOF: 0.008169276885359799,
+  ATFS: 0.03069126433660112
+};
+const scenarioRangePrices = {
+  XRP: 1.328881882906697,
+  WOTF: 0.1598553217972114,
+  XST: 0.01610610685385009,
+  NTDA: 0.05693775864405952,
+  AROS: 0.08411723286267270,
+  GOAF: 0.002441155883447885,
+  USWS: 0.00001939014432646543,
+  BDOR: 0.00009124353934751419,
+  GDOR: 0.0003089530127808055,
+  USER: 0.0005369882771183812,
+  GDNR: 0.001018139463734530,
+  IOF: 0.008455201576347391,
+  ATFS: 0.02915670111977107
+};
+
+function targetKAt(ts) {
+  const elapsed = Math.max(0, Math.min(ts - simulationStart, scenarioMs));
+  const progress = elapsed / scenarioMs;
+  let targetK = scenarioPath[scenarioPath.length - 1][1];
+  for (let i = 0; i < scenarioPath.length - 1; i++) {
+    const a = scenarioPath[i];
+    const b = scenarioPath[i+1];
+    if (progress >= a[0] && progress <= b[0]) {
+      const x = (progress - a[0]) / (b[0] - a[0]);
+      const smooth = x*x*(3-2*x);
+      targetK = a[1] + (b[1]-a[1])*smooth;
+      break;
+    }
+  }
+  // Clock-based micro-fluctuations. Ramp at launch avoids any value jump.
+  const ramp = Math.min(1, elapsed/(3 * 60 * 1000));
+  const micro = ramp * (
+    Math.sin(elapsed/(10*60*1000))*0.0022 +
+    Math.sin(elapsed/(3*60*1000))*0.0010 +
+    Math.sin(elapsed/37000)*0.00045
+  );
+  return Math.max(18.90,Math.min(24.31,targetK*(1+micro)));
+}
+
+const xrpScenarioStart = simulationStart;
+const xrpTransitionMs = 9 * 60 * 1000;
+function synchronizedXrpPrice(ts) {
+  if (ts < xrpScenarioStart) return null;
+  const elapsed = ts - xrpScenarioStart;
+  if (elapsed <= xrpTransitionMs) {
+    const t = elapsed/xrpTransitionMs;
+    const eased=t*t*(3-2*t);
+    return scenarioStartPrices.XRP + (1.385 - scenarioStartPrices.XRP)*eased;
+  }
+  const t=elapsed-xrpTransitionMs;
+  const wave=Math.sin(t/(7*60*1000))*0.0038+Math.sin(t/(90*1000))*0.0013;
+  return Math.max(1.38,Math.min(1.39,1.385+wave));
+}
+
+function computePricesAt(ts) {
+  // Keep historic series intact when calculating prior candles and daily statistics.
+  if (ts < simulationStart) return computePriorPricesAt(ts);
+
+  const elapsed = Math.max(0, Math.min(ts - simulationStart, scenarioMs));
+  const targetValue = targetKAt(ts) * 1000;
+  const rawProgress = Math.min(1, elapsed/(12*60*60*1000));
+  const blend=rawProgress*rawProgress*(3-2*rawProgress);
+  const provisional={};
+
+  for (const symbol of Object.keys(coins)) {
+    const startPrice=scenarioStartPrices[symbol];
+    const endPrice=scenarioRangePrices[symbol];
+    if (!Number.isFinite(startPrice)||!Number.isFinite(endPrice)) continue;
+    const seed=symbol.split("").reduce((sum,ch)=>sum+ch.charCodeAt(0),0);
+    if(symbol==="XRP") {
+      provisional[symbol]=synchronizedXrpPrice(ts);
+      continue;
+    }
+    const base=startPrice+(endPrice-startPrice)*blend;
+    if(symbol==="IOF") {
+      const oscillation=Math.sin(elapsed/82000)*0.009 +
+                        Math.sin(elapsed/247000)*0.004;
+      provisional[symbol]=Math.max(0.00000001,base*(1+oscillation));
+      continue;
+    }
+    const vol=["XST","USER","GDOR"].includes(symbol)?0.025:
+              ["WOTF","NTDA","AROS"].includes(symbol)?0.018:0.022;
+    // Subtract the starting phases so the new scenario has no discontinuity at launch.
+    const wave=(Math.sin(elapsed/34000+seed)-Math.sin(seed))*vol+
+      (Math.sin(elapsed/97000+seed*0.37)-Math.sin(seed*0.37))*vol*0.55;
+    provisional[symbol]=Math.max(0.000000001,base*(1+wave));
+  }
+
+  // Hold XRP, IOF, ATFS on independent trajectories; share remaining value
+  // across other assets to maintain exact total portfolio target at each time.
+  const xrpValue=coins.XRP.h * provisional.XRP;
+  const iofValue=coins.IOF.h * provisional.IOF;
+  const atfsValue=coins.ATFS.h * provisional.ATFS;
+  let otherValue=0;
+  for(const [symbol,p] of Object.entries(provisional)) {
+    if(["XRP","IOF","ATFS"].includes(symbol))continue;
+    otherValue+=coins[symbol].h*p;
+  }
+  const scale=otherValue>0?(targetValue-xrpValue-iofValue-atfsValue)/otherValue:1;
+  const result={};
+  for(const [symbol,p] of Object.entries(provisional)) {
+    result[symbol]=["XRP","IOF","ATFS"].includes(symbol)?p:p*Math.max(0.10,scale);
+  }
+  return result;
+}
 
 const ownershipSplit = {
   default: {salimPct:70.50, salehPct:29.50, label:"Portfolio split"},
