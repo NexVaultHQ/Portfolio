@@ -365,6 +365,8 @@ async function syncTargets() {
   } catch (err) {}
 }
 
+// Prior scenarios remain available for historical charts and for the five-minute delay.
+const computePriorPricesAt = (() => {
 // Historic prices before the new scenario. Keeping these also preserves past chart candles.
 const computePriorPricesAt = (() => {
 const simulationStart = new Date("2026-10-20T11:58:00+04:00").getTime();
@@ -742,6 +744,183 @@ function computePricesAt(ts) {
   const result={};
   for(const [symbol,p] of Object.entries(provisional)) {
     result[symbol]=["XRP","IOF","ATFS"].includes(symbol)?p:p*Math.max(0.10,scale);
+  }
+  return result;
+}
+  return computePricesAt;
+})();
+
+// Shared-clock 48-hour bearish DEMO scenario, scheduled five minutes after request.
+// Starts 2026-10-22T21:42:20+04:00 (Oman time); reaches the $19k-$20k trading band after initial decline.
+// XRP reaches $1.305 then oscillates between $1.305 and $1.320.
+const simulationStart = new Date("2026-10-22T21:42:20+04:00").getTime();
+const scenarioMs = 48 * 60 * 60 * 1000;
+const scenarioPath = [
+  [0.000000000000, 22.93708386],
+  [0.000694444444, 22.55000000],
+  [0.001736111111, 21.92000000],
+  [0.002777777778, 21.30000000],
+  [0.004166666667, 20.67000000],
+  [0.005555555556, 20.08000000],
+  [0.006944444444, 19.70000000],
+  [0.008680555556, 19.22000000],
+  [0.010416666667, 19.43000000],
+  [0.013888888889, 19.81000000],
+  [0.017361111111, 19.32000000],
+  [0.020833333333, 19.69000000],
+  [0.026041666667, 19.13000000],
+  [0.031250000000, 19.79000000],
+  [0.038194444444, 19.18000000],
+  [0.045138888889, 19.86000000],
+  [0.052083333333, 19.23000000],
+  [0.062500000000, 19.66000000],
+  [0.072916666667, 19.12000000],
+  [0.083333333333, 19.91000000],
+  [0.093750000000, 19.24000000],
+  [0.104166666667, 19.76000000],
+  [0.114583333333, 19.11000000],
+  [0.125000000000, 19.86000000],
+  [0.145833333333, 19.27000000],
+  [0.166666666667, 19.89000000],
+  [0.187500000000, 19.12000000],
+  [0.208333333333, 19.82000000],
+  [0.229166666667, 19.22000000],
+  [0.250000000000, 19.90000000],
+  [0.270833333333, 19.16000000],
+  [0.291666666667, 19.74000000],
+  [0.312500000000, 19.25000000],
+  [0.333333333333, 19.89000000],
+  [0.354166666667, 19.13000000],
+  [0.375000000000, 19.78000000],
+  [0.395833333333, 19.26000000],
+  [0.416666666667, 19.87000000],
+  [0.437500000000, 19.17000000],
+  [0.458333333333, 19.84000000],
+  [0.479166666667, 19.29000000],
+  [0.500000000000, 19.72000000],
+  [0.541666666667, 19.11000000],
+  [0.583333333333, 19.92000000],
+  [0.625000000000, 19.22000000],
+  [0.666666666667, 19.85000000],
+  [0.708333333333, 19.17000000],
+  [0.750000000000, 19.74000000],
+  [0.791666666667, 19.10000000],
+  [0.833333333333, 19.88000000],
+  [0.875000000000, 19.22000000],
+  [0.916666666667, 19.82000000],
+  [0.958333333333, 19.13000000],
+  [1.000000000000, 19.58000000]
+];
+const scenarioStartPrices = {
+  XRP:1.388720390381431,
+  WOTF:0.2121418045815630,
+  XST:0.02138097041418219,
+  NTDA:0.07436137561210392,
+  AROS:0.1105896401243469,
+  GOAF:0.003230268561275668,
+  USWS:0.00002579381321010648,
+  BDOR:0.0001189711362379519,
+  GDOR:0.0004061470912656143,
+  USER:0.0007121294098554645,
+  GDNR:0.001331818003821739,
+  IOF:0.008503265811614551,
+  ATFS:0.02939128560204868
+};
+const scenarioRangePrices = {
+  XRP:1.388720390381431,
+  WOTF:0.1888062060775911,
+  XST:0.02009811218933126,
+  NTDA:0.06841246556313560,
+  AROS:0.09953067611191219,
+  GOAF:0.002842636333922587,
+  USWS:0.00002398824628539903,
+  BDOR:0.0001142122907884338,
+  GDOR:0.0003655323821390529,
+  USER:0.0006907655275598005,
+  GDNR:0.001251908923592434,
+  IOF:0.008120618850091896,
+  ATFS:0.02836259060597697
+};
+
+function targetKAt(ts) {
+  const elapsed = Math.max(0, Math.min(ts - simulationStart, scenarioMs));
+  const progress = elapsed / scenarioMs;
+  let target = scenarioPath[scenarioPath.length-1][1];
+  for (let i=0; i<scenarioPath.length-1; i++) {
+    const a=scenarioPath[i], b=scenarioPath[i+1];
+    if(progress>=a[0] && progress<=b[0]) {
+      const t=(progress-a[0])/(b[0]-a[0]);
+      const ease=t*t*(3-2*t);
+      target=a[1]+(b[1]-a[1])*ease;
+      break;
+    }
+  }
+  // Deterministic multi-frequency movement: the same shared time means the same price.
+  const ramp=Math.min(1, elapsed/(4*60*1000));
+  const wiggle=ramp*(
+    Math.sin(elapsed/(10*60*1000))*0.0019 +
+    Math.sin(elapsed/(3.5*60*1000))*0.00095 +
+    Math.sin(elapsed/41000)*0.00035
+  );
+  const inBand=elapsed >= 25 * 60 * 1000;
+  return Math.max(inBand?19.06:19.00,Math.min(inBand?19.92:23.10,target*(1+wiggle)));
+}
+
+const xrpScenarioStart = simulationStart;
+const xrpTransitionMs = 25 * 60 * 1000;
+function synchronizedXrpPrice(ts) {
+  if (ts < xrpScenarioStart) return null;
+  const elapsed=Math.max(0,ts-xrpScenarioStart);
+  if(elapsed < xrpTransitionMs) {
+    const t=elapsed/xrpTransitionMs;
+    const eased=t*t*(3-2*t);
+    return scenarioStartPrices.XRP + (1.305-scenarioStartPrices.XRP)*eased;
+  }
+  const phase=elapsed-xrpTransitionMs;
+  const price=1.3125+0.0075*Math.sin(phase/(13*60*1000)-Math.PI/2)
+    +0.00045*Math.sin(phase/(82*1000));
+  return Math.max(1.305,Math.min(1.320,price));
+}
+
+function computePricesAt(ts) {
+  if (ts < simulationStart) return computePriorPricesAt(ts);
+  const elapsed=Math.max(0,Math.min(ts-simulationStart,scenarioMs));
+  const targetValue=targetKAt(ts)*1000;
+  const blendProgress=Math.min(1,elapsed/(4*60*60*1000));
+  const blend=blendProgress*blendProgress*(3-2*blendProgress);
+  const provisional={};
+
+  for (const symbol of Object.keys(coins)) {
+    const starting=scenarioStartPrices[symbol], end=scenarioRangePrices[symbol];
+    if (!Number.isFinite(starting)||!Number.isFinite(end)) continue;
+    if (symbol==="XRP") {
+      provisional[symbol]=synchronizedXrpPrice(ts);
+      continue;
+    }
+    const seed=symbol.split("").reduce((v,ch)=>v+ch.charCodeAt(0),0);
+    const base=starting+(end-starting)*blend;
+    if(symbol==="IOF") {
+      const wave=Math.sin(elapsed/88000)*0.008+Math.sin(elapsed/251000)*0.003;
+      provisional[symbol]=Math.max(0.000000001,base*(1+wave));
+      continue;
+    }
+    const vol=["XST","USER","GDOR"].includes(symbol)?0.023:
+       ["WOTF","NTDA","AROS"].includes(symbol)?0.018:0.021;
+    const wave=(Math.sin(elapsed/37000+seed)-Math.sin(seed))*vol
+       +(Math.sin(elapsed/101000+seed*0.39)-Math.sin(seed*0.39))*vol*0.55;
+    provisional[symbol]=Math.max(0.000000001,base*(1+wave));
+  }
+  // Treat $19k-$20k as TOTAL of all 13 coins, accounting for XRP independently.
+  const heldIndependent=["XRP","IOF","ATFS"];
+  const lockedValue=heldIndependent.reduce((v,k)=>v+coins[k].h*provisional[k],0);
+  let otherValue=0;
+  for(const [symbol,p] of Object.entries(provisional)) {
+    if(!heldIndependent.includes(symbol))otherValue+=coins[symbol].h*p;
+  }
+  const factor=otherValue>0?Math.max(0.10,(targetValue-lockedValue)/otherValue):1;
+  const result={};
+  for(const [symbol,p] of Object.entries(provisional)) {
+    result[symbol]=heldIndependent.includes(symbol)?p:p*factor;
   }
   return result;
 }
