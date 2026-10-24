@@ -925,6 +925,32 @@ function computePricesAt(ts) {
   return result;
 }
 
+
+/* Shared-time XRP demo move only. Other coins, holdings, and UI calculations unchanged. */
+const xrpDemoStart20261024 = new Date("2026-10-24T21:31:00+04:00").getTime();
+const xrpDemoTransitionMs = 20 * 60 * 1000;
+const originalComputePricesAt20261024 = computePricesAt;
+const xrpDemoOpeningPrice = originalComputePricesAt20261024(xrpDemoStart20261024).XRP;
+computePricesAt = function(ts) {
+  const prices = originalComputePricesAt20261024(ts);
+  if (ts < xrpDemoStart20261024) return prices;
+  const elapsed = ts - xrpDemoStart20261024;
+  let xrpPrice;
+  if (elapsed < xrpDemoTransitionMs) {
+    const t = elapsed / xrpDemoTransitionMs;
+    const smooth = t * t * (3 - 2 * t);
+    xrpPrice = xrpDemoOpeningPrice + (1.275 - xrpDemoOpeningPrice) * smooth
+      + Math.sin(Math.PI * t) * Math.sin(elapsed / 91000) * 0.00035;
+  } else {
+    const phase = elapsed - xrpDemoTransitionMs;
+    const price = 1.275 + 0.0137 * Math.sin(phase / (14 * 60 * 1000))
+      + 0.00065 * Math.sin(phase / (89 * 1000));
+    xrpPrice = Math.max(1.26, Math.min(1.29, price));
+  }
+  prices.XRP = xrpPrice;
+  return prices;
+};
+
 const ownershipSplit = {
   default: {salimPct:70.50, salehPct:29.50, label:"Portfolio split"},
   XRP: {
@@ -1139,13 +1165,13 @@ window.__portfolioMarket = {
       <button class="chart-back" id="chartBack" aria-label="Back">‹</button>
       <div class="chart-pair">
         <img id="chartCoinImg" alt="">
-        <div><b id="chartCoin">XRP / USD</b><span>Spot Market</span></div>
+        <div><b id="chartCoin">XRP / USD</b><span>Demo Market</span></div>
       </div>
-      <div class="chart-live">● LIVE</div>
+      <div class="chart-live">● DEMO</div>
     </div>
 
     <div class="chart-hero">
-      <div class="label">Market Price</div>
+      <div class="label">Simulated Price</div>
       <div class="chart-price" id="chartPrice">$0.0000</div>
       <div class="chart-change pos" id="chartChange">+0.00%</div>
     </div>
