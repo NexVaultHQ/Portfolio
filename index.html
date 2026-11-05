@@ -1255,6 +1255,105 @@ computePricesAt=function(ts) {
 };
 
 
+
+/* 5 November 2026: illustrative 24h mixed market recovery.
+   XRP trades $1.29-$1.30 after a one-hour rise, while 10 assets rise from
+   their starting prices and 4 underperform. Portfolio always sums the 14
+   modeled asset prices times owned quantities; no separate fake total. */
+const recoveryNov5Start = new Date("2026-11-05T09:06:17.747+04:00").getTime();
+const beforeRecoveryNov5 = computePricesAt;
+const recoveryNov5Open = beforeRecoveryNov5(recoveryNov5Start);
+const recoveryNov5OpeningTotal = Object.entries(coins).reduce(
+  (sum,[sym,asset]) => sum + recoveryNov5Open[sym]*asset.h, 0);
+const recoveryNov5XrpTargets = [
+  [0,recoveryNov5Open.XRP],[5,1.2850],[15,1.2920],
+  [30,1.2975],[45,1.2910],[60,1.2990]
+];
+const recoveryNov5TotalTargets = [
+  [0,recoveryNov5OpeningTotal],[5,22100],[15,22800],
+  [30,23500],[45,23150],[60,23850]
+];
+function recoveryNov5Step(minutes, points) {
+  if(minutes<=0)return points[0][1];
+  for(let i=0;i<points.length-1;i++){
+    const [start,a]=points[i], [end,b]=points[i+1];
+    if(minutes<=end){
+      const t=(minutes-start)/(end-start);
+      const e=t*t*(3-2*t);
+      return a+(b-a)*e;
+    }
+  }
+  return points[points.length-1][1];
+}
+const recoveryNov5Risers = ["WOTF","XST","NTDA","GOAF","USWS","GDNR","IOF","ATFS"];
+const recoveryNov5Laggers = ["AROS","BDOR","GDOR","USER"];
+computePricesAt = function(ts) {
+  if(ts<recoveryNov5Start) return beforeRecoveryNov5(ts);
+  const minutes=(ts-recoveryNov5Start)/60000;
+  if(minutes<=0) return {...recoveryNov5Open};
+  const prices={};
+  if(minutes<=60){
+    prices.XRP=recoveryNov5Step(minutes,recoveryNov5XrpTargets);
+  }else{
+    const z=minutes-60;
+    prices.XRP=Math.max(1.2902,Math.min(1.2998,
+      1.295+0.004*Math.cos(z/22)+0.0011*Math.sin(z/5.0)+
+      0.0006*(1-Math.exp(-z/4))*Math.sin(z/1.35)));
+  }
+  let target;
+  if(minutes<=60){
+    target=recoveryNov5Step(minutes,recoveryNov5TotalTargets);
+    // Smooth oscillations vanish at the specified checkpoints.
+    const section=minutes<5?5:minutes<15?10:minutes<30?15:minutes<45?15:15;
+    const local=minutes<5?minutes:minutes<15?minutes-5:
+      minutes<30?minutes-15:minutes<45?minutes-30:minutes-45;
+    target+=Math.sin(Math.PI*local/section)*(
+      32*Math.sin(minutes/2.2)+13*Math.sin(minutes/0.7));
+  }else{
+    const z=minutes-60;
+    target=Math.max(23040,Math.min(23970,
+      23850+350*(Math.cos(z/53)-1)+100*Math.sin(z/13.2)+
+      45*Math.sin(z/3.4)));
+  }
+  const t=Math.min(1,Math.max(0,minutes/60));
+  const ramp=t*t*(3-2*t);
+  // XTO is treated independently: modest gain above the fee-adjusted cost.
+  const xtoVolatility=Math.sin(minutes/15+0.4)-Math.sin(0.4);
+  prices.XTO=recoveryNov5Open.XTO*(1+0.066*ramp+
+    0.007*ramp*xtoVolatility);
+  // Four lagging coins stay weak relative to their opening prices.
+  let fixedValue=coins.XRP.h*prices.XRP+coins.XTO.h*prices.XTO;
+  for(const symbol of recoveryNov5Laggers){
+    const seed=[...symbol].reduce((n,ch)=>(n*29+ch.charCodeAt(0))%997,17);
+    const loss=(0.022+0.023*(seed/997))*ramp;
+    const pulse=0.006*ramp*Math.sin(minutes/(7+seed%9)+seed*0.009);
+    prices[symbol]=recoveryNov5Open[symbol]*(1-loss+pulse);
+    fixedValue+=coins[symbol].h*prices[symbol];
+  }
+  // Rise multipliers differ for each asset and fluctuate at different speeds.
+  // Adjust their collective growth to the desired aggregate scenario value,
+  // without ever overriding the portfolio total shown by the app.
+  let riserOpeningValue=0, rawGainValue=0;
+  const rawGain={};
+  for(const symbol of recoveryNov5Risers){
+    const seed=[...symbol].reduce((n,ch)=>(n*31+ch.charCodeAt(0))%997,13);
+    const waves=ramp*(0.010*Math.sin(minutes/(6+seed%11)+seed*0.02)+
+      0.004*Math.sin(minutes/(1.7+seed%6)+seed*0.012));
+    const gain=(0.18+0.11*seed/997)*ramp+waves;
+    const openingVal=coins[symbol].h*recoveryNov5Open[symbol];
+    rawGain[symbol]=gain;
+    riserOpeningValue+=openingVal;
+    rawGainValue+=openingVal*gain;
+  }
+  const neededGain=target-fixedValue-riserOpeningValue;
+  const scale=rawGainValue>1e-12?neededGain/rawGainValue:0;
+  for(const symbol of recoveryNov5Risers){
+    const increase=Math.max(-0.999,rawGain[symbol]*scale);
+    prices[symbol]=Math.max(1e-12,recoveryNov5Open[symbol]*(1+increase));
+  }
+  return prices;
+};
+
 const ownershipSplit = {
   default: {salimPct:70.50, salehPct:29.50, label:"Portfolio split"},
   XRP: {
