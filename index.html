@@ -1354,6 +1354,59 @@ computePricesAt = function(ts) {
   return prices;
 };
 
+
+/* Simulated Nov 6 risk-off: XRP falls in 2 minutes, but 14-asset
+   wallet is strictly valued from prices x quantities and stays > $23,000. */
+const guardedNov6Start=new Date("2026-11-06T08:25:29.665+04:00").getTime();
+const guardedNov6Previous=computePricesAt;
+const guardedNov6Open=guardedNov6Previous(guardedNov6Start);
+const guardedNov6Total=Object.entries(coins).reduce((s,[k,c])=>s+c.h*guardedNov6Open[k],0);
+const guardedXrpStops=[[0,guardedNov6Open.XRP],[1,1.2445],[2,1.224],[10,1.211],[20,1.203],[30,1.218],[45,1.228],[60,1.206],[90,1.222]];
+const guardedWalletStops=[[0,guardedNov6Total],[2,23480],[10,23250],[20,23180],[30,23550],[45,23900],[60,23400],[90,23580]];
+function guardedStep(m,path) {
+  for(let i=0;i<path.length-1;i++){
+    const [x,a]=path[i],[y,b]=path[i+1];
+    if(m<=y){const t=(m-x)/(y-x),smooth=t*t*(3-2*t);
+      return a+(b-a)*smooth;}
+  }
+  return path[path.length-1][1];
+}
+computePricesAt=function(ts){
+  if(ts<guardedNov6Start)return guardedNov6Previous(ts);
+  const m=(ts-guardedNov6Start)/60000;
+  if(m===0)return {...guardedNov6Open};
+  const p={};
+  p.XRP=m<=90?guardedStep(m,guardedXrpStops):
+    Math.max(1.2002,Math.min(1.2298,1.215+
+      .0095*Math.sin((m-90)/22)+.004*Math.sin((m-90)/5.3)+
+      .0012*Math.sin((m-90)/1.6)));
+  let target=m<=90?guardedStep(m,guardedWalletStops):
+    Math.max(23120,Math.min(23900,23580+310*Math.sin((m-90)/35)+
+      140*Math.sin((m-90)/8.5)+47*Math.sin((m-90)/2.1)));
+  const excluded=["XRP","GOAF","IOF","XTO","AROS","BDOR","GDOR","USER"];
+  let fixed=coins.XRP.h*p.XRP;
+  const fade=1-Math.exp(-m/12);
+  for(const k of excluded.slice(1)){
+    const seed=[...k].reduce((a,c)=>(a*29+c.charCodeAt(0))%997,17);
+    const gain=["GOAF","IOF","XTO"].includes(k)? .008:-.033;
+    const relative=1+fade*(gain+.009*Math.sin(m/(8+seed%17)+seed*.014));
+    p[k]=guardedNov6Open[k]*relative;
+    fixed+=coins[k].h*p[k];
+  }
+  const free=Object.keys(coins).filter(k=>!excluded.includes(k));
+  let raw=0;
+  for(const k of free){
+    const seed=[...k].reduce((a,c)=>(a*31+c.charCodeAt(0))%997,13);
+    const ripple=fade*(.041*Math.sin(m/(11+seed%19)+seed*.02)+
+      .013*Math.sin(m/(2+seed%7)+seed*.009));
+    p[k]=guardedNov6Open[k]*(1+ripple);
+    raw+=coins[k].h*p[k];
+  }
+  const factor=(target-fixed)/raw;
+  for(const k of free)p[k]*=factor;
+  return p;
+};
+
 const ownershipSplit = {
   default: {salimPct:70.50, salehPct:29.50, label:"Portfolio split"},
   XRP: {
