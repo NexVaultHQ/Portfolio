@@ -1407,6 +1407,91 @@ computePricesAt=function(ts){
   return p;
 };
 
+
+/* Nov 7, 2026: delayed illustrative market scenario.
+   Activates two minutes after request; XRP declines to $1.1521 over the
+   following four minutes, then oscillates inside $1.1521-$1.1820.
+   All prices are simulation-only; real holdings / cost basis unchanged.
+   Wallet always equals sum of the 14 assets and stays above $23k. */
+const nov7SlideStart = new Date("2026-11-07T07:58:54.121+04:00").getTime();
+const nov7Previous = computePricesAt;
+const nov7Opening = nov7Previous(nov7SlideStart);
+const nov7TotalOpening = Object.entries(coins).reduce(
+  (sum,[symbol,coin])=>sum+coin.h*nov7Opening[symbol],0);
+const nov7XrpPoints = [
+  [0,nov7Opening.XRP],[1,1.1818],[2,1.1662],[4,1.1521]
+];
+const nov7WalletPoints = [
+  [0,nov7TotalOpening],[1,23520],[2,23380],[4,23350],
+  [10,23600],[20,23850],[30,23250],[45,23700],[60,23400]
+];
+function nov7Interpolate(minutes,points){
+  for(let i=0;i<points.length-1;i++){
+    const [t0,v0]=points[i],[t1,v1]=points[i+1];
+    if(minutes<=t1){
+      const x=Math.max(0,Math.min(1,(minutes-t0)/(t1-t0)));
+      const smooth=x*x*(3-2*x);
+      return v0+(v1-v0)*smooth;
+    }
+  }
+  return points[points.length-1][1];
+}
+computePricesAt=function(ts){
+  if(ts<nov7SlideStart)return nov7Previous(ts);
+  const minutes=(ts-nov7SlideStart)/60000;
+  if(minutes<=0)return {...nov7Opening};
+  const p={};
+  if(minutes<=4){
+    p.XRP=nov7Interpolate(minutes,nov7XrpPoints);
+  }else{
+    const t=minutes-4;
+    p.XRP=Math.max(1.1521,Math.min(1.182,
+      1.16705-0.01495*Math.cos(t/10.5)+
+      0.00215*Math.sin(t/3.3)+0.0006*Math.sin(t/1.2)));
+  }
+  let goal;
+  if(minutes<=60){
+    goal=nov7Interpolate(minutes,nov7WalletPoints);
+  }else{
+    const t=minutes-60;
+    goal=Math.max(23150,Math.min(23920,
+      23400+330*Math.sin(t/37)+140*Math.sin(t/9.2)+
+      52*Math.sin(t/2.3)));
+  }
+  // Three winners remain in profit; four weaker assets drift down gently.
+  const protectedNames=["GOAF","IOF","XTO"];
+  const laggards=["AROS","BDOR","GDOR","USER"];
+  const active=1-Math.exp(-minutes/8);
+  let pinned=coins.XRP.h*p.XRP;
+  for(const symbol of protectedNames){
+    const seed=symbol==="GOAF"?0.5:symbol==="IOF"?1.2:2.1;
+    p[symbol]=nov7Opening[symbol]*(1+
+      active*(0.014+0.007*Math.sin(minutes/24+seed)-0.007*Math.sin(seed)));
+    pinned+=coins[symbol].h*p[symbol];
+  }
+  for(const symbol of laggards){
+    const hash=[...symbol].reduce((v,ch)=>(v*31+ch.charCodeAt(0))%991,11);
+    p[symbol]=nov7Opening[symbol]*(
+      1-active*(0.022+0.013*hash/991)+
+      0.0045*active*Math.sin(minutes/(7+hash%11)+hash*.02));
+    pinned+=coins[symbol].h*p[symbol];
+  }
+  // The remaining six independently fluctuate, while their aggregate
+  // absorbs the XRP selloff to preserve an accounting-consistent wallet.
+  const risers=["WOTF","XST","NTDA","USWS","GDNR","ATFS"];
+  let baseline=0;
+  for(const symbol of risers){
+    const hash=[...symbol].reduce((v,ch)=>(v*37+ch.charCodeAt(0))%997,19);
+    p[symbol]=nov7Opening[symbol]*(
+      1+0.06*active*Math.sin(minutes/(8+hash%19)+hash*.02)+
+      0.012*active*Math.sin(minutes/(2+hash%7)+hash*.011));
+    baseline+=coins[symbol].h*p[symbol];
+  }
+  const factor=(goal-pinned)/baseline;
+  for(const symbol of risers)p[symbol]*=factor;
+  return p;
+};
+
 const ownershipSplit = {
   default: {salimPct:70.50, salehPct:29.50, label:"Portfolio split"},
   XRP: {
