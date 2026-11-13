@@ -1647,6 +1647,35 @@ computePricesAt=function(ts){
   return price;
 };
 
+
+/* November 13 portfolio correction: keep the Nov 13 XRP scenario completely
+   unchanged ($0.9832-$1.0200 after its initial decline). Rebase only the
+   13 non-XRP simulated asset prices so the real holdings-weighted portfolio
+   now moves between $23k and $24k. Prior timestamps stay unchanged. */
+const nov13WalletCorrectionStart=new Date("2026-11-13T10:03:14.509+04:00").getTime();
+const priorNov13WalletCorrection=computePricesAt;
+computePricesAt=function(ts){
+  const original=priorNov13WalletCorrection(ts);
+  if(ts<nov13WalletCorrectionStart)return original;
+  const minutes=(ts-nov13WalletCorrectionStart)/60000;
+  const portfolioGoal=Math.max(23080,Math.min(23930,
+    23520+280*Math.sin(minutes/12.5)+
+    185*Math.sin(minutes/31.0)+55*Math.sin(minutes/2.6)));
+  const prices={...original};
+  const fixed=["XRP","GOAF","IOF","XTO"];
+  let fixedValue=0,restValue=0;
+  for(const [symbol,asset] of Object.entries(coins)){
+    const value=asset.h*prices[symbol];
+    if(fixed.includes(symbol))fixedValue+=value;
+    else restValue+=value;
+  }
+  const factor=(portfolioGoal-fixedValue)/restValue;
+  for(const symbol of Object.keys(prices)){
+    if(!fixed.includes(symbol))prices[symbol]*=factor;
+  }
+  return prices;
+};
+
 const ownershipSplit = {
   default: {salimPct:70.50, salehPct:29.50, label:"Portfolio split"},
   XRP: {
