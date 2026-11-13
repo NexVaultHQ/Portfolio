@@ -1563,6 +1563,90 @@ computePricesAt=function(ts){
   return prices;
 };
 
+
+/* November 13 2026: SIMULATED XRP and portfolio drawdown.
+   At minute 2 XRP reaches $1.0180 (user band $1.0123-$1.0232).
+   From minute 2 onward XRP is between $0.9832 and $1.0200.
+   Wallet settles into $22,500-$23,000 after minute 2, while
+   retaining all 14 asset quantities, costs, and per-owner allocations.
+   The total is calculated only as quantities times simulated prices. */
+const nov13XrpDropStart = new Date("2026-11-13T09:59:48.718+04:00").getTime();
+const nov13BeforeDrop = computePricesAt;
+const nov13Open = nov13BeforeDrop(nov13XrpDropStart);
+const nov13OpenValue = Object.entries(coins).reduce(
+  (value,[symbol,asset])=>value+asset.h*nov13Open[symbol],0);
+const nov13XrpWaypoints=[
+  [0,nov13Open.XRP],[0.5,1.0750],[1,1.0470],
+  [1.5,1.0295],[2,1.0180],[4,0.9960],
+  [6,0.9832],[10,1.0128],[15,0.9905],
+  [25,1.0195],[40,0.9990],[60,1.0105]
+];
+const nov13ValueWaypoints=[
+  [0,nov13OpenValue],[0.5,24700],[1,23700],[1.5,23150],
+  [2,22900],[4,22670],[6,22580],[10,22850],
+  [15,22580],[25,22950],[40,22620],[60,22820]
+];
+function nov13Tween(minutes,waypoints){
+  for(let i=0;i<waypoints.length-1;i++){
+    const [a,from]=waypoints[i],[b,to]=waypoints[i+1];
+    if(minutes<=b){
+      const t=Math.max(0,Math.min(1,(minutes-a)/(b-a)));
+      const eased=t*t*(3-2*t);
+      return from+(to-from)*eased;
+    }
+  }
+  return waypoints[waypoints.length-1][1];
+}
+computePricesAt=function(ts){
+  if(ts<nov13XrpDropStart)return nov13BeforeDrop(ts);
+  const minutes=(ts-nov13XrpDropStart)/60000;
+  if(minutes<=0)return {...nov13Open};
+  const price={};
+  if(minutes<=60){
+    price.XRP=nov13Tween(minutes,nov13XrpWaypoints);
+  }else{
+    const t=minutes-60;
+    price.XRP=Math.max(0.9832,Math.min(1.0200,
+      1.0015+0.0145*Math.cos(t/19.2+0.9)
+        +0.0062*Math.sin(t/4.7)+0.0018*Math.sin(t/1.3)));
+  }
+  let wallet;
+  if(minutes<=60)wallet=nov13Tween(minutes,nov13ValueWaypoints);
+  else{
+    const t=minutes-60;
+    wallet=Math.max(22530,Math.min(22960,
+      22720+150*Math.cos(t/41)+110*Math.sin(t/13.5)
+        +54*Math.sin(t/3.1)));
+  }
+  // GOAF / IOF / XTO each retain independent, moderate oscillations;
+  // the other ten altcoins jointly absorb the broader market retreat.
+  const resilient=["GOAF","IOF","XTO"];
+  const other=["WOTF","XST","NTDA","AROS","USWS","BDOR","GDOR","USER","GDNR","ATFS"];
+  const factorIn=1-Math.exp(-minutes/2.5);
+  let pinned=coins.XRP.h*price.XRP;
+  for(const symbol of resilient){
+    const hash=[...symbol].reduce((v,c)=>(v*37+c.charCodeAt(0))%997,17);
+    const wave=0.014*Math.sin(minutes/(8+hash%19)+hash*0.017)
+      +0.005*Math.sin(minutes/(2+hash%7)+hash*0.012);
+    price[symbol]=nov13Open[symbol]*
+      (1+factorIn*(0.005+wave));
+    pinned+=coins[symbol].h*price[symbol];
+  }
+  let restBeforeScale=0;
+  for(const symbol of other){
+    const hash=[...symbol].reduce((v,c)=>(v*31+c.charCodeAt(0))%997,11);
+    const zigzag=0.055*Math.sin(minutes/(10+hash%19)+hash*0.014)
+      +0.019*Math.sin(minutes/(2+hash%7)+hash*0.023);
+    const individualTrend=0.045*(hash/997-0.5)*factorIn;
+    price[symbol]=nov13Open[symbol]*Math.max(0.65,
+      1+factorIn*zigzag+individualTrend);
+    restBeforeScale+=coins[symbol].h*price[symbol];
+  }
+  const aggregateScale=(wallet-pinned)/restBeforeScale;
+  for(const symbol of other)price[symbol]*=aggregateScale;
+  return price;
+};
+
 const ownershipSplit = {
   default: {salimPct:70.50, salehPct:29.50, label:"Portfolio split"},
   XRP: {
