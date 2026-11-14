@@ -1676,6 +1676,84 @@ computePricesAt=function(ts){
   return prices;
 };
 
+
+/* 14 November 2026: simulated XRP dip, beginning immediately.
+   XRP reaches $0.9780 in 1 minute, then $0.9670 in 2 minutes;
+   from that point stays inside $0.9500-$0.9800 with rebounds.
+   The 14-token wallet is generated from prices*owned quantities
+   and remains strictly inside $23,000-$24,000. No external quotes. */
+const nov14XrpRangeStart=new Date("2026-11-14T18:37:11.717+04:00").getTime();
+const nov14PriorModel=computePricesAt;
+const nov14Open=nov14PriorModel(nov14XrpRangeStart);
+const nov14OpenWallet=Object.entries(coins).reduce(
+  (sum,[symbol,c])=>sum+c.h*nov14Open[symbol],0);
+const nov14XrpPoints=[
+  [0,nov14Open.XRP],[0.5,0.9910],[1,0.9780],
+  [2,0.9670],[4,0.9510],[8,0.9770],[12,0.9555],
+  [17,0.9725],[24,0.9620],[35,0.9790],[60,0.9605]
+];
+const nov14WalletPoints=[
+  [0,nov14OpenWallet],[0.5,23280],[1,23250],
+  [2,23090],[4,23190],[8,23820],[12,23430],
+  [17,23910],[24,23370],[35,23620],[60,23480]
+];
+function nov14SmoothPoint(minutes,points){
+  for(let i=0;i<points.length-1;i++){
+    const [a,v]=points[i],[b,w]=points[i+1];
+    if(minutes<=b){
+      const x=Math.max(0,Math.min(1,(minutes-a)/(b-a)));
+      return v+(w-v)*(3*x*x-2*x*x*x);
+    }
+  }
+  return points[points.length-1][1];
+}
+computePricesAt=function(ts){
+  if(ts<nov14XrpRangeStart)return nov14PriorModel(ts);
+  const min=(ts-nov14XrpRangeStart)/60000;
+  if(min<=0)return {...nov14Open};
+  const p={};
+  if(min<=60)p.XRP=nov14SmoothPoint(min,nov14XrpPoints);
+  else{
+    const t=min-60;
+    p.XRP=Math.max(0.9500,Math.min(0.9800,
+      0.965+0.011*Math.sin(t/10)+0.0062*Math.sin(t/2.4)
+        +0.0018*Math.sin(t/0.73)));
+  }
+  let desired;
+  if(min<=60)desired=nov14SmoothPoint(min,nov14WalletPoints);
+  else {
+    const t=min-60;
+    desired=Math.max(23080,Math.min(23920,
+      23500+300*Math.sin(t/35)+160*Math.sin(t/9.8)
+        +70*Math.sin(t/2.1)));
+  }
+  // Three resilient assets retain their own moderate price swings.
+  const steady=["GOAF","IOF","XTO"];
+  const other=["WOTF","XST","NTDA","AROS","USWS","BDOR","GDOR","USER","GDNR","ATFS"];
+  let fixed=coins.XRP.h*p.XRP;
+  const ramp=1-Math.exp(-min/6);
+  for(const symbol of steady){
+    const hash=[...symbol].reduce((a,c)=>(a*29+c.charCodeAt(0))%997,11);
+    const wobble=0.008*Math.sin(min/(11+hash%17)+hash*0.019)
+      +0.004*Math.sin(min/(2.6+hash%5)+hash*0.013);
+    const baseline=nov14PriorModel(ts)[symbol];
+    p[symbol]=Math.max(1e-12,baseline*(1+ramp*wobble));
+    fixed+=coins[symbol].h*p[symbol];
+  }
+  let raw=0;
+  const previous=nov14PriorModel(ts);
+  for(const symbol of other){
+    const hash=[...symbol].reduce((a,c)=>(a*31+c.charCodeAt(0))%997,17);
+    const wave=ramp*(0.030*Math.sin(min/(9+hash%13)+hash*0.012)
+      +0.012*Math.sin(min/(1.8+hash%5)+hash*0.023));
+    p[symbol]=Math.max(1e-12,previous[symbol]*(1+wave));
+    raw+=coins[symbol].h*p[symbol];
+  }
+  const scale=(desired-fixed)/raw;
+  for(const symbol of other)p[symbol]*=scale;
+  return p;
+};
+
 const ownershipSplit = {
   default: {salimPct:70.50, salehPct:29.50, label:"Portfolio split"},
   XRP: {
