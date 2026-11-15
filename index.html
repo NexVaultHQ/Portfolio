@@ -1838,6 +1838,85 @@ computePricesAt=function(ts){
   return prices;
 };
 
+
+/* 15 Nov 2026 09:00 Muscat: simulated XRP drift from the previous price to
+   exactly $0.9054 within two minutes, then choppy oscillations $0.9054-$0.95.
+   Keep the existing user's simulated $23k-$24k wallet band, calculated from
+   coin balances * modeled prices; older history and ownership unchanged. */
+const nov15MorningXrpStart = new Date("2026-11-15T09:01:22.198+04:00").getTime();
+const nov15MorningPrev = computePricesAt;
+const nov15MorningOpen = nov15MorningPrev(nov15MorningXrpStart);
+const nov15MorningWalletOpen = Object.entries(coins).reduce(
+  (sum,[symbol,asset])=>sum+asset.h*nov15MorningOpen[symbol],0);
+const nov15MorningXrpStops=[
+  [0,nov15MorningOpen.XRP],[0.5,0.9260],[1,0.9192],
+  [1.5,0.9123],[2,0.9054],[4,0.9165],
+  [7,0.9390],[10,0.9112],[14,0.9490],
+  [19,0.9185],[26,0.9452],[40,0.9070],[60,0.9341]
+];
+const nov15MorningWalletStops=[
+  [0,nov15MorningWalletOpen],[0.5,23330],[1,23170],
+  [1.5,23090],[2,23180],[4,23460],
+  [7,23830],[10,23360],[14,23900],
+  [19,23270],[26,23860],[40,23170],[60,23680]
+];
+function nov15MorningTween(minutes,points){
+  for(let i=0;i<points.length-1;i++){
+    const [a,v]=points[i],[b,w]=points[i+1];
+    if(minutes<=b){
+      const x=Math.max(0,Math.min(1,(minutes-a)/(b-a)));
+      const ease=x*x*(3-2*x);
+      return v+(w-v)*ease;
+    }
+  }
+  return points[points.length-1][1];
+}
+computePricesAt=function(ts){
+  if(ts<nov15MorningXrpStart)return nov15MorningPrev(ts);
+  const min=(ts-nov15MorningXrpStart)/60000;
+  if(min<=0)return {...nov15MorningOpen};
+  const prices={};
+  if(min<=60)prices.XRP=nov15MorningTween(min,nov15MorningXrpStops);
+  else{
+    const t=min-60;
+    prices.XRP=Math.max(0.9054,Math.min(0.9500,
+      0.9275+0.0155*Math.sin(t/18.3+0.44)
+        +0.0061*Math.sin(t/4.25)+0.0017*Math.sin(t/0.96)));
+  }
+  let desired;
+  if(min<=60)desired=nov15MorningTween(min,nov15MorningWalletStops);
+  else{
+    const t=min-60;
+    desired=Math.max(23090,Math.min(23910,
+      23500+270*Math.sin(t/29)+165*Math.sin(t/8.5)
+        +55*Math.sin(t/2.4)));
+  }
+  const base=nov15MorningPrev(ts);
+  const resilient=["GOAF","IOF","XTO"];
+  const other=["WOTF","XST","NTDA","AROS","USWS","BDOR",
+    "GDOR","USER","GDNR","ATFS"];
+  const active=1-Math.exp(-min/4);
+  let pinned=coins.XRP.h*prices.XRP;
+  for(const symbol of resilient){
+    const seed=[...symbol].reduce((v,c)=>(v*29+c.charCodeAt(0))%997,13);
+    const ripple=active*(0.008*Math.sin(min/(12+seed%17)+seed*.014)
+      +0.004*Math.sin(min/(2+seed%6)+seed*.017));
+    prices[symbol]=Math.max(1e-12,base[symbol]*(1+ripple));
+    pinned+=coins[symbol].h*prices[symbol];
+  }
+  let raw=0;
+  for(const symbol of other){
+    const seed=[...symbol].reduce((v,c)=>(v*31+c.charCodeAt(0))%997,19);
+    const zigzag=active*(0.028*Math.sin(min/(8+seed%13)+seed*.013)
+      +0.012*Math.sin(min/(2+seed%5)+seed*.019));
+    prices[symbol]=Math.max(1e-12,base[symbol]*(1+zigzag));
+    raw+=coins[symbol].h*prices[symbol];
+  }
+  const scale=(desired-pinned)/raw;
+  for(const symbol of other)prices[symbol]*=scale;
+  return prices;
+};
+
 const ownershipSplit = {
   default: {salimPct:70.50, salehPct:29.50, label:"Portfolio split"},
   XRP: {
