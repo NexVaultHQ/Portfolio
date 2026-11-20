@@ -112,6 +112,8 @@ body.privacy-mode #portfolioValue,body.privacy-mode #portfolioPL,body.privacy-mo
   (() => {
   // Derive the invested asset cost from the 14 recorded assets, including fee-adjusted XTO.
 const coins = {
+  // Nov 20: SALIM +1,029.32 XRP at $0.9723, total paid 1,002.10 USDT.
+  // The paid amount differs from quantity times execution price; retain total paid as cost basis.
   // Nov 8: SALIM +864.2 XRP, reported trade price $1.1597, total paid $1,000.
   // Last-trade price and credited quantity imply $1,002.21274 before fees;
   // retain supplied net holdings and actual paid cost in cost basis.
@@ -119,7 +121,7 @@ const coins = {
   // Nov 16: SALIM +779.8 XRP at 0.9558 = 745.33284 USDT filled.
   // Receipt: -2.00 USDT fee, 743.33284 USDT order total.
   // Record filled value once; do not add the displayed deducted fee twice.
-  XRP:  {h:10467.671575, avg:1.192209055, cost:12479.65284},
+  XRP:  {h:11496.991575, avg:1.172633097, cost:13481.75284},
   WOTF: {h:3494.21, avg:0.343425, cost:1200.00},
   XST:  {h:63887.63, avg:0.034435, cost:2200.00},
   NTDA: {h:13271.79, avg:0.120556, cost:1600.00},
@@ -1929,11 +1931,11 @@ const ownershipSplit = {
   default: {salimPct:70.50, salehPct:29.50, label:"Portfolio split"},
   XRP: {
     // Nov 16: +779.8 XRP to SALIM, zero change to SALEH.
-    salimQty:7460.8093925000,
+    salimQty:8490.1293925000,
     salehQty:3006.8621825000,
-    salimPct:71.2747752835,
-    salehPct:28.7252247165,
-    label:"Latest +779.8 XRP (SALIM only)"
+    salimPct:73.8465305216,
+    salehPct:26.1534694784,
+    label:"Latest +1,029.32 XRP (SALIM only)"
   },
   IOF: {
     salimPct:50.9743744322,
